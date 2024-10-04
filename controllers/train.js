@@ -3,7 +3,7 @@ const moment = require('moment');
 
 exports.getStation = (req, res) => {
     try {
-        const query = 'SELECT id, name FROM travel_app_db.stations';
+        const query = `SELECT id, name FROM ${process.env.DB_NAME}.stations`;
 
         // Execute the query using connection.query
         connection.query(query, (error, results) => {
@@ -29,7 +29,7 @@ exports.getTrains = async (req, res) => {
 
         // Fetch station name from the stations table using raw SQL query
         connection.query(
-            'SELECT name FROM travel_app_db.stations WHERE id = ?',
+            `SELECT name FROM ${process.env.DB_NAME}.stations WHERE id = ?`,
             [stationId],
             (error, stationResults) => {
                 if (error) {
