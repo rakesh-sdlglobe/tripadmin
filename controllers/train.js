@@ -57,15 +57,15 @@ exports.getTrains = async (req, res) => {
               GROUP_CONCAT(s.total_seats ORDER BY s.class) AS totalSeats,  
               GROUP_CONCAT(s.price ORDER BY s.class) AS price
           FROM
-              travel_app_db.trains t
+              ${process.env.DB_NAME}.trains t
           JOIN
-              travel_app_db.stations s1 ON t.start_station_id = s1.id
+              ${process.env.DB_NAME}.stations s1 ON t.start_station_id = s1.id
           JOIN
-              travel_app_db.stations s2 ON t.end_station_id = s2.id
+              ${process.env.DB_NAME}.stations s2 ON t.end_station_id = s2.id
           JOIN
-              travel_app_db.routes r ON r.trainId = t.id
+              ${process.env.DB_NAME}.routes r ON r.trainId = t.id
           JOIN
-              travel_app_db.seats s ON s.trainId = t.id
+              ${process.env.DB_NAME}.seats s ON s.trainId = t.id
           WHERE
               (s1.name = :stationName OR s2.name = :stationName)
               AND FIND_IN_SET(:dayOfWeek, t.days) > 0
