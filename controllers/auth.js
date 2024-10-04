@@ -53,7 +53,7 @@ exports.signup = async (req, res) => {
 // Login Controller
 exports.login = async (req, res) => {
   const { email, password } = req.body;
-
+  
   try {
       // Find user by email using a raw SQL query
       connection.query('SELECT * FROM users WHERE email = ?', [email], async (error, results) => {
