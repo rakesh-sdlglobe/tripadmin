@@ -1,29 +1,32 @@
 const connection = require('../utils/database');
 const moment = require('moment');
 
-exports.getStation = async (req, res) => {
-  try {
-    // Use async/await with promise pool
-    const [rows] = await connection.query('SELECT * FROM stations WHERE id = ?', [req.params.id]);
-    
-    if (rows.length === 0) {
-      return res.status(404).json({ message: 'Station not found' });
+exports.getStation = (req, res) => {
+    try {
+        const query = `SELECT id, name FROM ${process.env.DB_NAME}.stations`;
+
+        // Execute the query using connection.query
+        connection.query(query, (error, results) => {
+            if (error) {
+                console.error("Error fetching station details:", error);
+                return res.status(500).json({ error: "Internal Server Error" });
+            }
+            
+            // Send the stations data as response
+            res.status(200).json({ stations: results });
+        });
+    } catch (error) {
+        console.error("Unexpected error fetching station details:", error);
+        res.status(500).json({ error: "Internal Server Error" });
     }
-
-    res.json(rows[0]);
-  } catch (error) {
-    console.error('Unexpected error fetching station details:', error);
-    res.status(500).json({ error: 'Server error' });
-  }
 };
-
 
 exports.getTrains = async (req, res) => {
     const { stationId, date } = req.body;
 
     try {
         const dayOfWeek = moment(date).format('dddd');
-        
+
         // Fetch station name from the stations table using raw SQL query
         connection.query(
             `SELECT name FROM ${process.env.DB_NAME}.stations WHERE id = ?`,
@@ -38,7 +41,7 @@ exports.getTrains = async (req, res) => {
                     return res.status(404).json({ message: 'Station not found' });
                 }
 
-                const stationName = stationResults[0].name;              
+                const stationName = stationResults[0].name;
 
       const query = `
           SELECT
@@ -60,12 +63,12 @@ exports.getTrains = async (req, res) => {
           JOIN
               ${process.env.DB_NAME}.stations s2 ON t.end_station_id = s2.id
           JOIN
-               ${process.env.DB_NAME}.routes r ON r.train_id = t.id
+              ${process.env.DB_NAME}.routes r ON r.trainId = t.id
           JOIN
-               ${process.env.DB_NAME}.seats s ON s.train_id = t.id
+              ${process.env.DB_NAME}.seats s ON s.trainId = t.id
           WHERE
-                (s1.name = ? OR s2.name = ?)
-                 AND FIND_IN_SET(?, t.days) > 0
+              (s1.name = :stationName OR s2.name = :stationName)
+              AND FIND_IN_SET(:dayOfWeek, t.days) > 0
           GROUP BY
               t.id, r.arrival_time, r.departure_time, s1.name, s2.name;
       `;
@@ -79,7 +82,6 @@ exports.getTrains = async (req, res) => {
         if (trainResults.length === 0) {
             return res.status(404).json({ message: 'No trains available for the selected station and date' });
         }
-        
 
         // Process the seat details for each train
         const processedTrains = trainResults.map(train => {
@@ -100,7 +102,7 @@ exports.getTrains = async (req, res) => {
                 seats,
             };
         });
-        
+
         // Send the response with the processed train data
         res.status(200).json({ trains: processedTrains });
     });

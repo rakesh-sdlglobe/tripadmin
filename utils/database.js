@@ -8,11 +8,24 @@ const pool = mysql.createPool({
   password: process.env.DB_PASSWORD,
   database: process.env.DB_NAME,
   waitForConnections: true,
-  connectionLimit: 10, // Set the number of connections in the pool
-  queueLimit: 0 // No limit to queue of requests waiting for a connection
+  connectionLimit: 10, // Adjust this based on your application's load
+  queueLimit: 0,       // No limit to the number of queued requests
+  ssl: {
+    rejectUnauthorized: true, // Use this if your DB provider requires SSL
+  },
 });
 
-// Promisify the pool to use async/await
-const connection = pool.promise();
+// Function to get a connection from the pool
+const connection = () => {
+  return new Promise((resolve, reject) => {
+    pool.connection((err, connection) => {
+      if (err) {
+        return reject(err); // Reject the promise if there's an error
+      }
+      resolve(connection); // Resolve the promise with the connection
+    });
+  });
+};
 
+// Export the getConnection function
 module.exports = connection;
