@@ -63,9 +63,9 @@ exports.getTrains = async (req, res) => {
           JOIN
               ${process.env.DB_NAME}.stations s2 ON t.end_station_id = s2.id
           JOIN
-              travel_app_db.routes r ON r.trainId = t.id
+               ${process.env.DB_NAME}.routes r ON r.train_id = t.id
           JOIN
-              travel_app_db.seats s ON s.trainId = t.id
+               ${process.env.DB_NAME}.seats s ON s.train_id = t.id
           WHERE
                 (s1.name = ? OR s2.name = ?)
                  AND FIND_IN_SET(?, t.days) > 0
