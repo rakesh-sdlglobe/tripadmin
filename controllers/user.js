@@ -29,7 +29,7 @@ exports.getUserProfile = async (req, res) => {
     const query = `
       SELECT name, email, lastname, mobile, gender, dob 
       FROM users 
-      WHERE name = ?;
+      WHERE id = ?;
     `;
 
     connection.query(query, [name], (err, results) => {
