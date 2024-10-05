@@ -1,11 +1,11 @@
 const connection = require("../utils/database");
 
-// Get Recent Users
-exports.getRecentUsers = async (req, res) => {
+// Get Recent users
+exports.getRecentusers = async (req, res) => {
   try {
     const query = `
       SELECT name, email 
-      FROM Users
+      FROM users
       ORDER BY createdAt DESC 
       LIMIT 5;
     `;
@@ -28,7 +28,7 @@ exports.getUserProfile = async (req, res) => {
     const name = req.user;
     const query = `
       SELECT name, email, lastname, mobile, gender, dob 
-      FROM Users 
+      FROM users 
       WHERE id = ?;
     `;
 
@@ -58,7 +58,7 @@ exports.editUserProfile = async (req, res) => {
     let { name, lastname, mobile, dob, gender, email } = req.body;
 
     const query = `
-      UPDATE Users 
+      UPDATE users 
       SET name = ?, lastname = ?, mobile = ?, dob = ?, gender = ?, email = ? 
       WHERE name = ?;
     `;
@@ -88,7 +88,7 @@ exports.myBookings = async (req, res) => {
         t.name AS train_name, fs.name AS from_station, ts.name AS to_station,
         r.departure_time AS departure_time, r.arrival_time AS arrival_time
       FROM 
-        Users u
+        users u
         JOIN Bookings b ON u.id = b.UserId
         JOIN Trains t ON b.TrainId = t.id
         JOIN Stations fs ON b.from_station_id = fs.id
