@@ -1,25 +1,22 @@
 const connection = require('../utils/database');
 const moment = require('moment');
 
-exports.getStation = (req, res) => {
-    try {
-        const query = `SELECT id, name FROM ${process.env.DB_NAME}.stations`;
-
-        // Execute the query using connection.query
-        connection.query(query, (error, results) => {
-            if (error) {
-                console.error("Error fetching station details:", error);
-                return res.status(500).json({ error: "Internal Server Error" });
-            }
-            
-            // Send the stations data as response
-            res.status(200).json({ stations: results });
-        });
-    } catch (error) {
-        console.error("Unexpected error fetching station details:", error);
-        res.status(500).json({ error: "Internal Server Error" });
+exports.getStation = async (req, res) => {
+  try {
+    // Use async/await with promise pool
+    const [rows] = await connection.query('SELECT * FROM stations WHERE id = ?', [req.params.id]);
+    
+    if (rows.length === 0) {
+      return res.status(404).json({ message: 'Station not found' });
     }
+
+    res.json(rows[0]);
+  } catch (error) {
+    console.error('Unexpected error fetching station details:', error);
+    res.status(500).json({ error: 'Server error' });
+  }
 };
+
 
 exports.getTrains = async (req, res) => {
     const { stationId, date } = req.body;
