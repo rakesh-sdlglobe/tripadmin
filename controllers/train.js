@@ -51,7 +51,7 @@ exports.getTrains = async (req, res) => {
               r.departure_time,
               s1.name AS startStation,
               s2.name AS endStation,
-              TIMEDIFF(r.arrival_time , r.departure_time) AS duration,
+              TIMEDIFF( r.departure_time , r.arrival_time ) AS duration,
               GROUP_CONCAT(s.class ORDER BY s.class) AS seatClasses,  
               GROUP_CONCAT(s.available_seats ORDER BY s.class) AS availableSeats,  
               GROUP_CONCAT(s.total_seats ORDER BY s.class) AS totalSeats,  
