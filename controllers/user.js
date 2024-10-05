@@ -121,7 +121,7 @@ exports.addTraveller = async (req, res) => {
     }
 
     const query = `
-      INSERT INTO Travellers (firstname, lastname, mobile, dob, userId) 
+      INSERT INTO Travellers (firstname, lastname, mobile, dob, user_id) 
       VALUES (?, ?, ?, ?, ?);
     `;
     
@@ -147,7 +147,7 @@ exports.getTravelers = async (req, res) => {
     const query = `
       SELECT id, firstname, lastname, mobile, dob 
       FROM Travellers 
-      WHERE userId = ?;
+      WHERE user_id = ?;
     `;
 
     connection.query(query, [userId], (err, travelers) => {
@@ -176,7 +176,7 @@ exports.removeTraveller = async (req, res) => {
 
     const query = `
       DELETE FROM Travellers 
-      WHERE id = ? AND userId = ?;
+      WHERE id = ? AND user_id = ?;
     `;
 
     connection.query(query, [id, userId], (err, result) => {
