@@ -47,6 +47,7 @@ exports.getTrains = async (req, res) => {
           SELECT
               t.name AS trainName,
               t.number AS trainNumber,
+              t.days AS operatingDays,
               r.arrival_time,
               r.departure_time,
               s1.name AS startStation,

@@ -23,32 +23,28 @@ exports.getRecentUsers = async (req, res) => {
 };
 
 // Get User Profile
-exports.getUserProfile = async (req, res) => {
-  try {
-    const name = req.user;
-    const query = `
-      SELECT name, email, lastname, mobile, gender, dob 
-      FROM users 
-      WHERE id = ?;
-    `;
+exports.getUserProfile = (req, res) => {
+  const name = req.user;
+  const query = `
+    SELECT name, email, lastname, mobile, gender, dob, isEmailVerified, isMobileVerified 
+    FROM users 
+    WHERE id = ?;
+  `;
 
-    connection.query(query, [name], (err, results) => {
-      if (err) {
-        console.error('Error fetching user profile:', err);
-        return res.status(500).json({ message: "Internal server error" });
-      }
+  connection.query(query, [name], (err, results) => {
+    if (err) {
+      console.error('Error fetching user profile:', err);
+      return res.status(500).json({ message: "Internal server error" });
+    }
 
-      if (results.length === 0) {
-        return res.status(404).json({ message: "User not found" });
-      }
+    if (results.length === 0) {
+      return res.status(404).json({ message: "User not found" });
+    }
 
-      res.status(200).json(results[0]);
-    });
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ message: "Internal server error" });
-  }
+    res.status(200).json(results[0]);
+  });
 };
+
 
 // Edit User Profile
 exports.editUserProfile = async (req, res) => {
@@ -58,7 +54,7 @@ exports.editUserProfile = async (req, res) => {
     const query = `
       UPDATE users 
       SET name = ?, lastname = ?, mobile = ?, dob = ?, gender = ?, email = ? 
-      WHERE name = ?;
+      WHERE id = ?;
     `;
     
     connection.query(query, [name, lastname, mobile, dob, gender, email, req.user], (err, result) => {
@@ -113,7 +109,7 @@ exports.myBookings = async (req, res) => {
 // Add Traveller
 exports.addTraveller = async (req, res) => {
   try {
-    const { firstname, lastname, mobile, dob } = req.body;
+    const { firstname, lastname, mobile, dob } = req.body;    
     const userId = req.user;
 
     if (!firstname || !lastname || !mobile || !userId) {
@@ -121,7 +117,7 @@ exports.addTraveller = async (req, res) => {
     }
 
     const query = `
-      INSERT INTO Travellers (firstname, lastname, mobile, dob, user_id) 
+      INSERT INTO travellers (firstname, lastname, mobile, dob, user_id) 
       VALUES (?, ?, ?, ?, ?);
     `;
     
@@ -145,8 +141,8 @@ exports.getTravelers = async (req, res) => {
     const userId = req.user;
 
     const query = `
-      SELECT id, firstname, lastname, mobile, dob 
-      FROM Travellers 
+      SELECT *
+      FROM travellers 
       WHERE user_id = ?;
     `;
 
@@ -155,7 +151,7 @@ exports.getTravelers = async (req, res) => {
         console.error('Error fetching travelers:', err);
         return res.status(500).json({ message: "Internal server error" });
       }
-
+      
       res.status(200).json(travelers);
     });
   } catch (error) {
@@ -175,7 +171,7 @@ exports.removeTraveller = async (req, res) => {
     }
 
     const query = `
-      DELETE FROM Travellers 
+      DELETE FROM travellers 
       WHERE id = ? AND user_id = ?;
     `;
 
