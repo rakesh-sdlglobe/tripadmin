@@ -34,7 +34,7 @@ exports.signup = async (req, res) => {
               const newUserId = insertResults.insertId;
 
               // Generate JWT token
-              const token = jwt.sign({ id: newUserId }, process.env.SECRET, { expiresIn: '1h' });
+              const token = jwt.sign({ id: newUserId }, process.env.SECRET, { expiresIn: '24h' });
 
               // Return token and user info
               res.status(201).json({
@@ -73,9 +73,9 @@ exports.login = async (req, res) => {
           if (!isMatch) {
               return res.status(400).json({ message: 'Invalid credentials' });
           }
-
+ 
           // Generate JWT token
-          const token = jwt.sign({ id: user.id }, process.env.SECRET, { expiresIn: '1h' });
+          const token = jwt.sign({ id: user.id }, process.env.SECRET, { expiresIn: '24h' });
 
           // Return the token and user information
           res.json({

@@ -3,7 +3,9 @@ const cors = require('cors');
 const authRoutes = require('./routes/authRoute'); 
 const userRoutes = require('./routes/userRoute'); 
 const revenueRoutes = require('./routes/revenueRoute');
-const trainRoutes = require('./routes/trainsRoute')
+const trainRoutes = require('./routes/trainsRoute');
+const emailRoutes = require('./routes/emailRoutes');
+const passwordRoutes = require('./routes/passwordRoutes');
 
 const app = express();
 
@@ -16,6 +18,8 @@ app.use('/api', authRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/booking',revenueRoutes);
 app.use('/api/trains',trainRoutes);
+app.use('/api', emailRoutes);
+app.use('/api/password', passwordRoutes);
 
 
 // syncModels();
