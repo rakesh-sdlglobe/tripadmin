@@ -23,33 +23,50 @@ exports.getRecentUsers = async (req, res) => {
 };
 
 // Get User Profile
-exports.getUserProfile = (req, res) => {
-  const name = req.user;
-  const query = `
-    SELECT name, email, lastname, mobile, gender, dob, isEmailVerified, isMobileVerified 
-    FROM users 
-    WHERE id = ?;
-  `;
 
-  connection.query(query, [name], (err, results) => {
-    if (err) {
-      console.error('Error fetching user profile:', err);
-      return res.status(500).json({ message: "Internal server error" });
-    }
+exports.getUserProfile = async (req, res) => {
+  try {
+    // Get email from decoded JWT token
+    const id = req.user;
 
-    if (results.length === 0) {
-      return res.status(404).json({ message: "User not found" });
-    }
+    const query = `
+      SELECT name, email, lastname, mobile, gender, dob, isEmailVerified, isMobileVerified 
+      FROM users 
+      WHERE id = ?;
+    `;
 
-    res.status(200).json(results[0]);
-  });
+    connection.query(query, [id], (err, results) => {
+      if (err) {
+        console.error('Error fetching user profile:', err);
+        return res.status(500).json({ message: "Internal server error" });
+      }
+
+      if (results.length === 0) {
+        return res.status(404).json({ message: "User not found" });
+      }
+      console.log("47 from user controller ", results[0]);
+      
+      res.status(200).json(results[0]);
+    });
+  } catch (error) {
+    console.error('Error in getUserProfile:', error);
+    res.status(500).json({ message: "Internal server error" });
+  }
 };
-
 
 // Edit User Profile
 exports.editUserProfile = async (req, res) => {
+  console.log("59 req data ", req.body)
   try {
     let { name, lastname, mobile, dob, gender, email } = req.body;
+
+    // let formattedDob = '19-01-01'; // Default date if none provided
+    // if (dob) {
+    //   const isValidDate = !isNaN(Date.parse(dob));
+    //   if (isValidDate) {
+    //     formattedDob = new Date(dob).toISOString().split('T')[0];
+    //   }
+    // }
 
     const query = `
       UPDATE users 
