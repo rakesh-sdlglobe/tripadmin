@@ -14,7 +14,7 @@ function generateOTP(length) {
     return otp;
 }
 
-// Function to send OTP via SMSIndiaHub API
+// Send OTP function
 const sendOTP = async (req, res) => {
     const { phoneNumber } = req.body;
 
@@ -22,40 +22,50 @@ const sendOTP = async (req, res) => {
         return res.status(400).json({ error: 'Phone number is required' });
     }
 
+    // Generate OTP
     const otp = generateOTP(6); // Generate a 6-digit OTP
+    const message = `Your One Time Password is ${otp}. Thanks SMSINDIAHUB`;
 
-    // Store OTP in memory with a timestamp
-    otpStorage[phoneNumber] = { otp, expiresAt: Date.now() + 5 * 60 * 1000 }; // Expires in 5 minutes
+    // Store OTP with expiration (5 minutes)
+    otpStorage[phoneNumber] = { otp, expiresAt: Date.now() + 5 * 60 * 1000 };
 
-    // SMSIndiaHub API credentials from environment variables
-    const apiKey = process.env.API_KEY;
-    const userId = process.env.USER_ID;
-    const password = process.env.PASSWORD;
-    const senderId = process.env.SENDER_ID;
-    const url = 'https://www.smsindiahub.in/api/mt/SendSMS';
-
-    const message = `Your OTP is: ${otp}`;
-
-    const data = {
-        apiKey: apiKey,                
-        user: userId,                  
-        password: password,            
-        phone: phoneNumber,            
-        senderid: senderId,            
-        route: '4',                    
-        msg: message,                  
-        type: 'text',                  
+    // API details
+    const apiUrl = 'http://cloud.smsindiahub.in/vendorsms/pushsms.aspx';
+    const params = {
+        APIKey: process.env.SMS_API_KEY,  // Your API key
+        msisdn: phoneNumber,             // Recipient phone number
+        sid: process.env.SMS_SENDER_ID,  // Sender ID
+        msg: message,                    // The OTP message
+        fl: 0,                           // Format flag (0 for plain text)
+        gwid: 2                          // Gateway ID (provided by SMSIndiaHub)
     };
 
     try {
-        const response = await axios.post(url, null, { params: data });
-        return res.status(200).json({ message: 'OTP sent successfully' });
+        const response = await axios.get(apiUrl, { params });
+
+        // Log the entire response for debugging
+        console.log('Response from SMSIndiaHub:', response.data);
+
+        // Check the response for success
+        if (response.data && response.data.ErrorCode === '000' && response.data.ErrorMessage === 'Done') {
+            return res.status(200).json({ message: 'OTP sent successfully', jobId: response.data.JobId });
+        } else {
+            // Log unexpected response format or error
+            console.error('Unexpected response:', response.data);
+            return res.status(500).json({
+                error: 'Failed to send OTP',
+                details: response.data || 'Unknown error'
+            });
+        }
     } catch (error) {
-        return res.status(500).json({ error: 'Failed to send OTP', details: error.response?.data });
+        // Handle errors in making the API request
+        console.error('Error while sending OTP:', error.message);
+        return res.status(500).json({ error: 'Failed to send OTP', details: error.message });
     }
 };
 
-// Function to verify OTP
+
+// Verify OTP function
 const verifyOTP = (req, res) => {
     const { phoneNumber, otp } = req.body;
 
@@ -63,11 +73,10 @@ const verifyOTP = (req, res) => {
         return res.status(400).json({ error: 'Phone number and OTP are required' });
     }
 
-    const storedOTP = otpStorage[phoneNumber];
+    const storedOtp = otpStorage[phoneNumber];
 
-    // Check if OTP exists and has not expired
-    if (storedOTP && storedOTP.otp === otp && storedOTP.expiresAt > Date.now()) {
-        // OTP is valid
+    // Check if OTP exists, matches, and is not expired
+    if (storedOtp && storedOtp.otp === otp && storedOtp.expiresAt > Date.now()) {
         delete otpStorage[phoneNumber]; // Clear OTP after successful verification
         return res.status(200).json({ message: 'OTP verified successfully' });
     } else {
