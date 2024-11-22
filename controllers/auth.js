@@ -250,7 +250,7 @@ exports.deleteUser = async (req, res) => {
 
                 res.status(200).json({ message: 'Account successfully deleted' });
             });
-        });
+        }); 
     } catch (error) {
         console.error('Error during account deletion:', error);
         res.status(500).json({ message: 'Server error' });
