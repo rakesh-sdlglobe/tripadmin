@@ -26,12 +26,12 @@ exports.sendOtp = async (req, res) => {
   const otp = crypto.randomInt(100000, 999999).toString();
 
   // Set OTP expiration time
-  const expirationTime = Date.now() + process.env.OTP_EXPIRATION_MINUTES * 60000;
+  const expirationTime = Date.now() + parseInt(process.env.OTP_EXPIRATION_MINUTES) * 60000;
   otpStorage[email] = { otp, expirationTime };
 
   // Mail options
   const mailOptions = {
-    from: process.env.GMAIL_USER,
+    from: process.env.EMAIL_USER,
     to: email,
     subject: 'Your OTP Code',
     text: `Your OTP code is ${otp}. It will expire in ${process.env.OTP_EXPIRATION_MINUTES} minutes.`,
