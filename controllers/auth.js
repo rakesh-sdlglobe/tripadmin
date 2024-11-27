@@ -218,41 +218,41 @@ exports.googleAuth = async (req, res) => {
 
 
 exports.deleteUser = async (req, res) => {
-  const userId = req.user; // Assuming `req.user` contains the authenticated user ID
-  const { password } = req.body;
+    const userId = req.user; // Assuming `req.user` contains the authenticated user ID
+    const { password } = req.body;
 
-  try {
-      // Fetch user from the database by userId
-      connection.query('SELECT * FROM users WHERE id = ?', [userId], async (err, results) => {
-          if (err) {
-              console.error('Database query error:', err);
-              return res.status(500).json({ message: 'Server error' });
-          }
+    try {
+        // Fetch user from the database by userId
+        connection.query('SELECT * FROM users WHERE id = ?', [userId], async (err, results) => {
+            if (err) {
+                console.error('Database query error:', err);
+                return res.status(500).json({ message: 'Server error' });
+            }
 
-          if (results.length === 0) {
-              return res.status(404).json({ message: 'User not found' });
-          }
+            if (results.length === 0) {
+                return res.status(404).json({ message: 'User not found' });
+            }
 
-          const user = results[0];
+            const user = results[0];
 
-          // Compare provided password with the hashed password in the database
-          const isMatch = await bcrypt.compare(password, user.password);
-          if (!isMatch) {
-              return res.status(401).json({ message: 'Invalid password' });
-          }
+            // Compare provided password with the hashed password in the database
+            const isMatch = await bcrypt.compare(password, user.password);
+            if (!isMatch) {
+                return res.status(401).json({ message: 'Invalid password' });
+            }
 
-          // Delete the user account
-          connection.query('DELETE FROM users WHERE id = ?', [userId], (deleteErr) => {
-              if (deleteErr) {
-                  console.error('Database delete error:', deleteErr);
-                  return res.status(500).json({ message: 'Server error' });
-              }
+            // Delete the user account
+            connection.query('DELETE FROM users WHERE id = ?', [userId], (deleteErr) => {
+                if (deleteErr) {
+                    console.error('Database delete error:', deleteErr);
+                    return res.status(500).json({ message: 'Server error' });
+                }
 
-              res.status(200).json({ message: 'Account successfully deleted' });
-          });
-      });
-  } catch (error) {
-      console.error('Error during account deletion:', error);
-      res.status(500).json({ message: 'Server error' });
-  }
+                res.status(200).json({ message: 'Account successfully deleted' });
+            });
+        }); 
+    } catch (error) {
+        console.error('Error during account deletion:', error);
+        res.status(500).json({ message: 'Server error' });
+    }
 };
