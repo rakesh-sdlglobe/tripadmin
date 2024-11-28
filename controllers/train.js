@@ -43,38 +43,38 @@ exports.getTrains = async (req, res) => {
 
                 const stationName = stationResults[0].name;              
 
-      const query = `
-          SELECT
-              t.name AS trainName,
-              t.number AS trainNumber,
-              t.days AS operatingDays,
-              r.arrival_time,
-              r.departure_time,
-              s1.name AS startStation,
-              s2.name AS endStation,
-              TIMEDIFF( r.departure_time , r.arrival_time ) AS duration,
-              GROUP_CONCAT(s.class ORDER BY s.class) AS seatClasses,  
-              GROUP_CONCAT(s.available_seats ORDER BY s.class) AS availableSeats,  
-              GROUP_CONCAT(s.total_seats ORDER BY s.class) AS totalSeats,  
-              GROUP_CONCAT(s.price ORDER BY s.class) AS price
-          FROM
-              ${process.env.DB_NAME}.trains t
-          JOIN
-              ${process.env.DB_NAME}.stations s1 ON t.start_station_id = s1.id
-          JOIN
-              ${process.env.DB_NAME}.stations s2 ON t.end_station_id = s2.id
-          JOIN
-               ${process.env.DB_NAME}.routes r ON r.train_id = t.id
-          JOIN
-               ${process.env.DB_NAME}.seats s ON s.train_id = t.id
-          WHERE
-                (s1.name = ? OR s2.name = ?)
-                 AND FIND_IN_SET(?, t.days) > 0
-          GROUP BY
-              t.id, r.arrival_time, r.departure_time, s1.name, s2.name;
-      `;
+        const query = `
+            SELECT
+                t.name AS trainName,
+                t.number AS trainNumber,
+                t.days AS operatingDays,
+                r.arrival_time,
+                r.departure_time,
+                s1.name AS startStation,
+                s2.name AS endStation,
+                TIMEDIFF( r.departure_time , r.arrival_time ) AS duration,
+                GROUP_CONCAT(s.class ORDER BY s.class) AS seatClasses,  
+                GROUP_CONCAT(s.available_seats ORDER BY s.class) AS availableSeats,  
+                GROUP_CONCAT(s.total_seats ORDER BY s.class) AS totalSeats,  
+                GROUP_CONCAT(s.price ORDER BY s.class) AS price
+            FROM
+                ${process.env.DB_NAME}.trains t
+            JOIN
+                ${process.env.DB_NAME}.stations s1 ON t.start_station_id = s1.id
+            JOIN
+                ${process.env.DB_NAME}.stations s2 ON t.end_station_id = s2.id
+            JOIN
+                ${process.env.DB_NAME}.routes r ON r.train_id = t.id
+            JOIN
+                ${process.env.DB_NAME}.seats s ON s.train_id = t.id
+            WHERE
+                    (s1.name = ? OR s2.name = ?)
+                    AND FIND_IN_SET(?, t.days) > 0
+            GROUP BY
+                t.id, r.arrival_time, r.departure_time, s1.name, s2.name;
+        `;
 
-      connection.query(query, [stationName, stationName, dayOfWeek], (err, trainResults) => {
+        connection.query(query, [stationName, stationName, dayOfWeek], (err, trainResults) => {
         if (err) {
             console.error("Error fetching trains:", err);
             return res.status(500).json({ message: 'Database query error' });
