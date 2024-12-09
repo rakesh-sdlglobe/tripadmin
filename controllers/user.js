@@ -1,4 +1,7 @@
 const connection = require("../utils/database");
+const multer = require('multer');
+const fs = require('fs');
+const path = require('path');
 
 // Get Recent Users
 exports.getRecentUsers = async (req, res) => {
@@ -30,7 +33,7 @@ exports.getUserProfile = async (req, res) => {
     const id = req.user;
 
     const query = `
-      SELECT name, email, lastname, mobile, gender, dob, isEmailVerified, isMobileVerified 
+      SELECT name, email, lastname, mobile, gender, dob, isEmailVerified, isMobileVerified, filepath
       FROM users 
       WHERE id = ?;
     `;
@@ -45,6 +48,7 @@ exports.getUserProfile = async (req, res) => {
         return res.status(404).json({ message: "User not found" });
       }
       console.log("47 from user controller ", results[0]);
+      
       
       res.status(200).json(results[0]);
     });
@@ -203,5 +207,58 @@ exports.removeTraveller = async (req, res) => {
   } catch (error) {
     console.error("Error removing traveler:", error);
     res.status(500).json({ message: "Internal server error" });
+  }
+};
+
+
+
+// API Function
+exports.imageUpload = async (req, res) => {
+  console.log("SS came to 216 imageupload")
+  try {
+    // Ensure the uploads directory exists
+    const uploadsDir = path.join(__dirname, '../uploads');
+    if (!fs.existsSync(uploadsDir)) {
+      fs.mkdirSync(uploadsDir); // Create the directory if it doesn't exist
+    }
+
+    // Multer configuration
+    const storage = multer.diskStorage({
+      destination: (req, file, cb) => {
+        cb(null, uploadsDir); // Save files to the 'uploads/' directory
+      },
+      filename: (req, file, cb) => {
+        const uniqueName = `${Date.now()}-${file.originalname}`;
+        cb(null, uniqueName); // Unique filename to avoid conflicts
+      },
+    });
+
+    const upload = multer({ storage }).single('file'); // Handle single file upload
+
+    // Handle the file upload
+    upload(req, res, (err) => {
+      if (err) {
+        return res.status(500).json({ message: 'Error uploading file', error: err.message });
+      }
+
+      const filePath = req.file.path;
+      const userId = req.user; 
+
+      // Insert file path into the database
+      const query = 'update users set  filepath = ? where id = ?';
+      connection.query(query, [filePath, userId ], (error, results) => {
+        if (error) {
+          return res.status(500).json({ message: 'Error saving file path to database', error: error.message });
+        }
+
+        res.status(200).json({
+          message: 'File uploaded and saved successfully',
+          filePath,
+          databaseResult: results,
+        });
+      });
+    });
+  } catch (error) {
+    res.status(500).json({ message: 'Server error', error: error.message });
   }
 };

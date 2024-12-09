@@ -1,5 +1,6 @@
 const express = require('express');
 const cors = require('cors');
+const path = require('path')
 const authRoutes = require('./routes/authRoute'); 
 const userRoutes = require('./routes/userRoute'); 
 const revenueRoutes = require('./routes/revenueRoute');
@@ -22,6 +23,9 @@ app.use('/api/trains',trainRoutes);
 app.use('/api', emailRoutes);
 app.use('/api/password', passwordRoutes);
 app.use('/api/otp', otpRoutes);
+
+app.use('/api/uploads', express.static(path.join(__dirname, '/uploads')));
+
 
 
 // syncModels();
