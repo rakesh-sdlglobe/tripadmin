@@ -10,5 +10,6 @@ router.get('/myBookings', isAuth.token, userController.myBookings)
 router.post('/addTraveler', isAuth.token, userController.addTraveller)
 router.get('/getTravelers', isAuth.token, userController.getTravelers)
 router.delete('/traveller/:id', isAuth.token, userController.removeTraveller);
+router.post('/imageUpload', isAuth.token,userController.imageUpload);
 
 module.exports = router;
