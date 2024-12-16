@@ -57,40 +57,52 @@ exports.getUserProfile = async (req, res) => {
     res.status(500).json({ message: "Internal server error" });
   }
 };
-
 // Edit User Profile
 exports.editUserProfile = async (req, res) => {
-  console.log("59 req data ", req.body)
+  console.log("59 req data ", req.body);
   try {
     let { name, lastname, mobile, dob, gender, email } = req.body;
 
-    // let formattedDob = '19-01-01'; // Default date if none provided
-    // if (dob) {
-    //   const isValidDate = !isNaN(Date.parse(dob));
-    //   if (isValidDate) {
-    //     formattedDob = new Date(dob).toISOString().split('T')[0];
-    //   }
-    // }
-
-    const query = `
+    const updateQuery = `
       UPDATE users 
       SET name = ?, lastname = ?, mobile = ?, dob = ?, gender = ?, email = ? 
       WHERE id = ?;
     `;
-    
-    connection.query(query, [name, lastname, mobile, dob, gender, email, req.user], (err, result) => {
+
+    // Update the user profile
+    connection.query(updateQuery, [name, lastname, mobile, dob, gender, email, req.user], (err, result) => {
       if (err) {
         console.error('Error updating user profile:', err);
         return res.status(500).json({ message: "Internal server error" });
       }
 
-      res.status(200).json({ message: "Profile updated successfully" });
+      // Fetch the updated user profile
+      const fetchQuery = `SELECT name, lastname, mobile, gender, email, isEmailVerified, isMobileVerified, filepath, DATE_FORMAT(dob, '%Y-%m-%d') AS dob FROM users WHERE id = ?;`;
+      connection.query(fetchQuery, [req.user], (err, rows) => {
+        if (err) {
+          console.error('Error fetching updated user profile:', err);
+          return res.status(500).json({ message: "Internal server error" });
+        }
+
+        if (rows.length > 0) {
+          // Send the updated user data as an object
+          console.log("Sending data is ", rows[0]);
+          
+          res.status(200).json({
+            message: "Profile updated successfully",
+            user: rows[0],
+          });
+        } else {
+          res.status(404).json({ message: "User not found" });
+        }
+      });
     });
   } catch (error) {
     console.error(error);
     res.status(500).json({ message: "Internal server error" });
   }
 };
+
 
 // My Bookings
 exports.myBookings = async (req, res) => {
