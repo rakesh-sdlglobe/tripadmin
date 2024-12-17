@@ -60,7 +60,7 @@ exports.login = async (req, res) => {
         // Find user by email using a raw SQL query
         connection.query('SELECT * FROM users WHERE email = ?', [email], async (error, results) => {
             if (error) {
-                return res.status(500).json({ message: 'Database query error' });
+                return res.status(500).json({ message: 'Please Check the database connections' });
             }
 
             // Check if user exists
@@ -157,7 +157,7 @@ exports.googleAuth = async (req, res) => {
                                     role: results[0].role,
                                 },
                                 process.env.SECRET, // Replace with a secure secret key
-                                { expiresIn: '1h' }
+                                { expiresIn: '24h' }
                             );
 
                             return res.status(200).json({
@@ -193,7 +193,7 @@ exports.googleAuth = async (req, res) => {
                                     role: 'user',
                                 },
                                 process.env.SECRET, // Replace with a secure secret key
-                                { expiresIn: '1h' }
+                                { expiresIn: '24h' }
                             );
 
                             return res.status(201).json({

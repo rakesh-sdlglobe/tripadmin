@@ -87,10 +87,10 @@ exports.editUserProfile = async (req, res) => {
         if (rows.length > 0) {
           // Send the updated user data as an object
           console.log("Sending data is ", rows[0]);
-          
+          user = rows[0]
           res.status(200).json({
-            message: "Profile updated successfully",
-            user: rows[0],
+            ...user,
+            message : "Profile Edited Sucessfully"
           });
         } else {
           res.status(404).json({ message: "User not found" });
