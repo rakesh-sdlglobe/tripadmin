@@ -12,7 +12,12 @@ const otpRoutes = require('./routes/otpRoutes');
 const app = express();
 
 // Middleware setup
-app.use(cors());
+app.use(cors({
+  origin: 'http://localhost:3000', // Allow only React app
+  // origin: 'https://seemytrip.vercel.app', // Allow only seemytrip.vercel.app
+  methods: ['GET', 'POST', 'PUT', 'DELETE'], // Specify allowed methods
+  // credentials: true, // Include credentials if needed
+}));
 app.use(express.json());
 
 // Routes
@@ -25,7 +30,6 @@ app.use('/api/password', passwordRoutes);
 app.use('/api/otp', otpRoutes);
 
 app.use('/api/uploads', express.static(path.join(__dirname, '/uploads')));
-
 
 
 // syncModels();
