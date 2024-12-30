@@ -14,7 +14,8 @@ const app = express();
 // Middleware setup
 const allowedOrigins = [
   'http://localhost:3000', 
-  'https://seemytrip.vercel.app'
+  'https://seemytrip.vercel.app',
+  'https://tripadmin.onrender.com',
 ];
 
 app.use(cors({
