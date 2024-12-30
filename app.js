@@ -12,13 +12,28 @@ const otpRoutes = require('./routes/otpRoutes');
 const app = express();
 
 // Middleware setup
+const allowedOrigins = [
+  'http://localhost:3000', 
+  'https://seemytrip.vercel.app'
+];
+
 app.use(cors({
-  origin: 'http://localhost:3000', // Allow only React app
-  // origin: 'https://seemytrip.vercel.app', // Allow only seemytrip.vercel.app
+  origin: (origin, callback) => {
+    // Allow requests with no origin (like mobile apps or Postman)
+    if (!origin) return callback(null, true);
+
+    if (allowedOrigins.includes(origin)) {
+      callback(null, true); // Origin is allowed
+    } else {
+      callback(new Error('Not allowed by CORS')); // Origin is not allowed
+    }
+  },
   methods: ['GET', 'POST', 'PUT', 'DELETE'], // Specify allowed methods
-  // credentials: true, // Include credentials if needed
+  // credentials: true, // Uncomment if credentials are needed
 }));
+
 app.use(express.json());
+
 
 // Routes
 app.use('/api', authRoutes);
