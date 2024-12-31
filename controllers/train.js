@@ -1,7 +1,18 @@
 const connection = require('../utils/database');
 const moment = require('moment');
 const { default: axios } = require('axios');
-const auth = process.env.CREDENTIALS;
+const { response } = require('express');
+
+
+// ITCTC API Authentication Credentials
+
+const auth = {
+    auth: {
+        username: process.env.IRCTC_API_USERNAME,
+        password: process.env.IRCTC_API_PASSWORD, 
+    },
+};
+
 
 exports.getStation = async (req, res) => {
     try {
@@ -30,18 +41,11 @@ exports.getStation = async (req, res) => {
 }
 
 
-
 exports.getTrains = async (req, res) => {
     // console.log("req",req);
     const { fromStnCode, toStnCode, journeyDate } = req.body;
     // console.log("req body" , req.body);
     console.log(fromStnCode, toStnCode, journeyDate);
-    const auth = {
-        auth: {
-            username: process.env.IRCTC_API_USERNAME,
-            password: process.env.IRCTC_API_PASSWORD, 
-        },
-    };
     try {
         const url = `https://stagews.irctc.co.in/eticketing/webservices/taenqservices/tatwnstns/${fromStnCode}/${toStnCode}/${journeyDate}`;
         const response = await axios.get(url,auth);
@@ -49,9 +53,29 @@ exports.getTrains = async (req, res) => {
         res.json(response.data);
     } catch (error) {
         console.error('Error fetching trains:', error.response ? error.response.data : error.message);
-        res.status(500).json({ message: 'Failed to fetch trains' });
+        res.status(500).json({ message: 'Failed to fetch trains', error : error.response ? error.response.data : error.message });
     }
 } 
+
+exports.getTrainsAvailableFareEnquiry = async (req, res) => {
+    const { trainNo, journeyDate, fromStnCode, toStnCode, jClass, jQuota, paymentEnqFlag } = req.body;
+    const bodyContent = {
+        "masterId": "WSMTB2C00000",
+        "enquiryType": "3",
+        "reservationChoice": "99",
+        "moreThanOneDay": "true"
+    }
+    console.log(trainNo, journeyDate, fromStnCode, toStnCode, jClass, jQuota, paymentEnqFlag);
+    try{
+        const url = `https://stagews.irctc.co.in/eticketing/webservices/taenqservices/avlFareenquiry/${trainNo}/${journeyDate}/${fromStnCode}/${toStnCode}/${jClass}/${jQuota}/${paymentEnqFlag}`;
+        const response = await axios.post(url,bodyContent,auth);
+        console.log(response.data);
+        res.json(response.data);
+    }catch(error){
+        console.error('Error fetching trains:', error.response ? error.response.data : error.message);
+        res.status(500).json({ message: 'Failed to fetch trains fare details', error: error.response ? error.response.data : error.message });
+    }
+}
 
 // exports.getStation = (req, res) => {
 //     try {
