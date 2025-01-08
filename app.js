@@ -15,6 +15,7 @@ const app = express();
 const allowedOrigins = [
   'http://localhost:3000', 
   'https://seemytrip.vercel.app',
+  'https://stagews.irctc.co.in',
   'https://tripadmin.onrender.com',
 ];
 

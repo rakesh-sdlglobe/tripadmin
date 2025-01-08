@@ -13,6 +13,11 @@ const auth = {
     },
 };
 
+const apiHeaders = {
+    "Content-Type": "application/json",
+    "Accept-Encoding": "gzip,deflate",
+    "Host": "stagews.irctc.co.in"
+};
 
 exports.getStation = async (req, res) => {
     try {
@@ -43,14 +48,46 @@ exports.getStation = async (req, res) => {
 
 exports.getTrains = async (req, res) => {
     // console.log("req",req);
-    const { fromStnCode, toStnCode, journeyDate } = req.body;
+    let { fromStnCode, toStnCode, journeyDate, jQuota = "GN", paymentEnqFlag = "N" } = req.body;
     // console.log("req body" , req.body);
     console.log(fromStnCode, toStnCode, journeyDate);
     try {
         const url = `https://stagews.irctc.co.in/eticketing/webservices/taenqservices/tatwnstns/${fromStnCode}/${toStnCode}/${journeyDate}`;
-        const response = await axios.get(url,auth);
-        console.log(response.data);
-        res.json(response.data);
+        let response = await axios.get(url,auth, { headers: apiHeaders });
+        console.log("Now trying the fare enquiry details for the trains");
+        console.log("respnse is ",response.data)
+        let trains = response.data?.trainBtwnStnsList;
+
+        const bodyContent = {
+            "masterId": "WSMTB2C00000",
+            "enquiryType": "3",
+            "reservationChoice": "99",
+            "moreThanOneDay": "true"
+        }
+        
+        for (let i = 0; i < trains.length; i++) {
+            trains[i].availabilities = []
+            const { trainNumber, avlClasses, fromStnCode, toStnCode } = trains[i];
+            let trainClassTotal
+            // Iterate over available classes for each train
+            console.log("Classes are " , avlClasses);
+            console.log(trainNumber, journeyDate, fromStnCode, toStnCode, jQuota, paymentEnqFlag, " -> for the fare enquiry");
+            for (let cls of avlClasses) {
+                console.log("Cls value is ", cls)
+                let trainFareAPIUrl = `https://stagews.irctc.co.in/eticketing/webservices/taenqservices/avlFareenquiry/${trainNumber}/${journeyDate}/${fromStnCode}/${toStnCode}/${cls}/${jQuota}/${paymentEnqFlag}`;
+                
+                let fareDetailedTrainData = await axios.post(trainFareAPIUrl, bodyContent, auth, { headers: apiHeaders });
+
+                let { avlDayList, totalFare, enqClass, quota } = fareDetailedTrainData.data
+                fareDetailedTrainData = { avlDayList, totalFare, enqClass, quota } 
+                trains[i].availabilities.push(fareDetailedTrainData)
+            }
+        }
+        
+        // After all the trains are updated, assign the updated trains back to response.data
+        response.data.trainBtwnStnsList = trains;
+        res.json(response.data);  // Sending updated response back to the client
+        
     } catch (error) {
         console.error('Error fetching trains:', error.response ? error.response.data : error.message);
         res.status(500).json({ message: 'Failed to fetch trains', error : error.response ? error.response.data : error.message });
@@ -58,17 +95,17 @@ exports.getTrains = async (req, res) => {
 } 
 
 exports.getTrainsAvailableFareEnquiry = async (req, res) => {
-    const { trainNo, journeyDate, fromStnCode, toStnCode, jClass, jQuota, paymentEnqFlag } = req.body;
+    const { trainNo, journeyDate , fromStnCode, toStnCode, jClass, jQuota, paymentEnqFlag } = req.body;
     const bodyContent = {
         "masterId": "WSMTB2C00000",
         "enquiryType": "3",
         "reservationChoice": "99",
         "moreThanOneDay": "true"
     }
-    console.log(trainNo, journeyDate, fromStnCode, toStnCode, jClass, jQuota, paymentEnqFlag);
+    console.log(trainNo, journeyDate, fromStnCode, toStnCode, jClass, jQuota, paymentEnqFlag, " -> for the fare enquiry");
     try{
         const url = `https://stagews.irctc.co.in/eticketing/webservices/taenqservices/avlFareenquiry/${trainNo}/${journeyDate}/${fromStnCode}/${toStnCode}/${jClass}/${jQuota}/${paymentEnqFlag}`;
-        const response = await axios.post(url,bodyContent,auth);
+        const response = await axios.post(url,bodyContent,auth, { headers: apiHeaders });
         console.log(response.data);
         res.json(response.data);
     }catch(error){
