@@ -50,6 +50,9 @@ exports.getTrains = async (req, res) => {
     // console.log("req",req);
     let { fromStnCode, toStnCode, journeyDate, jQuota = "GN", paymentEnqFlag = "N" } = req.body;
     // console.log("req body" , req.body);
+    const jQuotaList  = ["GN","TQ","LD","PT"]
+    avlDayList = []
+
     console.log(fromStnCode, toStnCode, journeyDate);
     try {
         const url = `https://stagews.irctc.co.in/eticketing/webservices/taenqservices/tatwnstns/${fromStnCode}/${toStnCode}/${journeyDate}`;
@@ -65,22 +68,40 @@ exports.getTrains = async (req, res) => {
             "moreThanOneDay": "true"
         }
         
-        for (let i = 0; i < trains.length; i++) {
+        for (let i = 0; i < trains?.length; i++) {
             trains[i].availabilities = []
             const { trainNumber, avlClasses, fromStnCode, toStnCode } = trains[i];
-            let trainClassTotal
             // Iterate over available classes for each train
             console.log("Classes are " , avlClasses);
             console.log(trainNumber, journeyDate, fromStnCode, toStnCode, jQuota, paymentEnqFlag, " -> for the fare enquiry");
-            for (let cls of avlClasses) {
-                console.log("Cls value is ", cls)
-                let trainFareAPIUrl = `https://stagews.irctc.co.in/eticketing/webservices/taenqservices/avlFareenquiry/${trainNumber}/${journeyDate}/${fromStnCode}/${toStnCode}/${cls}/${jQuota}/${paymentEnqFlag}`;
-                
-                let fareDetailedTrainData = await axios.post(trainFareAPIUrl, bodyContent, auth, { headers: apiHeaders });
+            for (let j = 0; j < jQuotaList?.length; j ++){
+                let jQuota = jQuotaList[j]
+                for (let cls of avlClasses) {
+                    console.log("Cls value is ", cls)
+                    
+                    let trainFareAPIUrl = `https://stagews.irctc.co.in/eticketing/webservices/taenqservices/avlFareenquiry/${trainNumber}/${journeyDate}/${fromStnCode}/${toStnCode}/${cls}/${jQuota}/${paymentEnqFlag}`;
+                    
+                    let fareDetailedTrainData = await axios.post(trainFareAPIUrl, bodyContent, auth, { headers: apiHeaders });
+                    console.log("The trains data for TATKAL = ", fareDetailedTrainData.data);
+                    
+                    let { avlDayList, totalFare, enqClass, quota } = fareDetailedTrainData.data
+                    console.log("The AVLDAYLIST is ", avlDayList)
+                    if(avlDayList ){
+                        // if (quota == "LD" && avlDayList?.[0]?.availablityStatus === "NOT AVAILABLE") continue;
 
-                let { avlDayList, totalFare, enqClass, quota } = fareDetailedTrainData.data
-                fareDetailedTrainData = { avlDayList, totalFare, enqClass, quota } 
-                trains[i].availabilities.push(fareDetailedTrainData)
+                        fareDetailedTrainData = { avlDayList, totalFare, enqClass, quota } 
+                        console.log("Final fareDetailed Train data ", "\n*"*50,"\n",fareDetailedTrainData)
+                        trains[i].availabilities.push(fareDetailedTrainData) ;
+                        if ((quota === "TQ" || quota === "PT") && avlDayList[0]?.availablityStatus === "TRAIN DEPARTED") {
+                            console.log("Train has departed. Breaking out of the loop.");
+                            break;  // Break out of the inner loop for this quota and don't iterate for the next class
+                        }
+                    }
+                    // if(avlDayList?.[0]?.availablityStatus == "TRAIN DEPARTED") break;
+
+                }
+                // if(avlDayList?.[0]?.availablityStatus == "TRAIN DEPARTED") break;
+
             }
         }
         

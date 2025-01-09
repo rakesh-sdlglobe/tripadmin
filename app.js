@@ -14,8 +14,9 @@ const app = express();
 // Middleware setup
 const allowedOrigins = [
   'http://localhost:3000', 
-  'https://seemytrip.vercel.app',
+  'http://localhost:3002', 
   'https://stagews.irctc.co.in',
+  'https://seemytrip.vercel.app',
   'https://tripadmin.onrender.com',
 ];
 
