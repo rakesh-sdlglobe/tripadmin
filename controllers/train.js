@@ -54,6 +54,7 @@ exports.getTrains = async (req, res) => {
     avlDayList = []
 
     console.log(fromStnCode, toStnCode, journeyDate);
+    console.log("Data came 52")
     try {
         const url = `https://stagews.irctc.co.in/eticketing/webservices/taenqservices/tatwnstns/${fromStnCode}/${toStnCode}/${journeyDate}`;
         let response = await axios.get(url,auth, { headers: apiHeaders });
@@ -90,7 +91,7 @@ exports.getTrains = async (req, res) => {
                         // if (quota == "LD" && avlDayList?.[0]?.availablityStatus === "NOT AVAILABLE") continue;
 
                         fareDetailedTrainData = { avlDayList, totalFare, enqClass, quota } 
-                        console.log("Final fareDetailed Train data ", "\n*"*50,"\n",fareDetailedTrainData)
+                        console.log("Final fareDetailed Train data ","\n",fareDetailedTrainData)
                         trains[i].availabilities.push(fareDetailedTrainData) ;
                         if ((quota === "TQ" || quota === "PT") && avlDayList[0]?.availablityStatus === "TRAIN DEPARTED") {
                             console.log("Train has departed. Breaking out of the loop.");
@@ -134,6 +135,28 @@ exports.getTrainsAvailableFareEnquiry = async (req, res) => {
         res.status(500).json({ message: 'Failed to fetch trains fare details', error: error.response ? error.response.data : error.message });
     }
 }
+
+
+exports.getTrainSchedule = async (req, res) => {
+    console.log("141 came to call the train schedule api.")
+    try {
+        const { trainNumber } = req.params;
+
+        const url = `https://stagews.irctc.co.in/eticketing/webservices/taenqservices/trnscheduleEnq/${trainNumber}`
+        const response = await axios.get(url,auth);
+
+        if (response.data) {
+            console.log("148 code response", response.data)    
+            res.status(200).json(response.data);
+        } else {
+        res.status(404).json({ message: "Train data not found" });
+        }
+    } catch (error) {
+        console.error("Error fetching train schedule:", error.message);
+        res.status(500).json({ message: "Failed to fetch train schedule" });
+    }
+};
+
 
 // exports.getStation = (req, res) => {
 //     try {
