@@ -187,7 +187,7 @@ exports.getTrains = async (req, res) => {
             if (!result.success) continue;
 
             const { data, trainIndex, quota } = result;
-            const { avlDayList, totalFare, enqClass } = data;
+            const { avlDayList, totalFare, enqClass, baseFare } = data;
 
             if (!avlDayList) continue;
 
@@ -200,6 +200,7 @@ exports.getTrains = async (req, res) => {
             trains[trainIndex].availabilities.push({
                 avlDayList,
                 totalFare,
+                baseFare,
                 enqClass,
                 quota
             });
