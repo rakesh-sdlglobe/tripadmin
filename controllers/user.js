@@ -141,12 +141,13 @@ exports.myBookings = async (req, res) => {
 
 // Add Traveller
 exports.addTraveller = async (req, res) => {
+  console.log("YES add trav triggered..")
   try {
     const { firstname, lastname, mobile, dob } = req.body;    
     const userId = req.user;
 
-    if (!firstname || !lastname || !mobile || !userId) {
-      return res.status(400).json({ message: "Please provide all required fields: firstname, lastname, mobile, userId" });
+    if (!firstname || !lastname || !userId) {
+      return res.status(400).json({ message: "Please provide all required fields: firstname, lastname, userId" });
     }
 
     const query = `
@@ -159,7 +160,7 @@ exports.addTraveller = async (req, res) => {
         console.error('Error adding traveller:', err);
         return res.status(500).json({ message: 'Internal server error', error: err.message });
       }
-
+      console.log("happened for ",firstname,results)
       res.status(200).json({ message: 'Traveller added successfully' });
     });
   } catch (error) {
