@@ -259,6 +259,26 @@ exports.getTrainSchedule = async (req, res) => {
     }
 };
 
+exports.getBoardingStations = async (req, res) => {
+    console.log("263 came to call the boarding stations api.")
+    try {
+        const { trainNumber, journeyDate, fromStnCode, toStnCode, jClass } = req.body;
+
+        const url = `https://stagews.irctc.co.in/eticketing/webservices/taenqservices/boardingstationenq/${trainNumber}/${journeyDate}/${fromStnCode}/${toStnCode}/${jClass}`
+        const response = await axios.get(url,auth);
+
+        if (response.data?.boardingStationList) {
+            console.log("271 code response", response.data)    
+            res.status(200).json(response.data.boardingStationList);
+        } else {
+        res.status(404).json({ message: "Boarding Stations not found" });
+        }
+    } catch (error) {
+        console.error("Error fetching train boarding stations", error.message);
+        res.status(500).json({ message: "Failed while fetching train boarding stations" });
+    }
+};
+
 
 // exports.getStation = (req, res) => {
 //     try {
