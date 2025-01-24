@@ -7,5 +7,6 @@ router.get('/getStation', trainController.getStation);
 router.post('/getTrains', trainController.getTrains);
 router.post('/getTrains/avlFareEnquiry', trainController.getTrainsAvailableFareEnquiry);
 router.get('/getTrainSchedule/:trainNumber', trainController.getTrainSchedule);
+router.post('/getBoardingStations', trainController.getBoardingStations);
 
 module.exports = router;
