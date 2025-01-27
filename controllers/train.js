@@ -120,6 +120,7 @@ exports.getTrains = async (req, res) => {
         const baseUrl = 'https://stagews.irctc.co.in/eticketing/webservices/taenqservices';
         const trainsUrl = `${baseUrl}/tatwnstns/${fromStnCode}/${toStnCode}/${journeyDate}`;
         const trainsResponse = await axios.get(trainsUrl, auth, { headers: apiHeaders });
+
         let trains = trainsResponse.data?.trainBtwnStnsList || [];
 
         const bodyContent = {
@@ -212,7 +213,7 @@ exports.getTrains = async (req, res) => {
         console.error('Error fetching trains:', error.response?.data || error.message);
         res.status(500).json({ 
             message: 'Failed to fetch trains', 
-            error: error.response?.data || error.message 
+            error: error.response?.data || error.errorMessage
         });
     }
 }
