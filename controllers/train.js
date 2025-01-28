@@ -282,7 +282,7 @@ exports.getBoardingStations = async (req, res) => {
 
 
 exports.getUsernameFromIRCTC = async (req, res) => {
-    console.log("263 came to call the boarding stations api.",req.params)
+    console.log("283 came to call the boarding stations api.",req.params)
     try {
         const { userName } = req.params;
 
@@ -296,8 +296,8 @@ exports.getUsernameFromIRCTC = async (req, res) => {
         res.status(200).json({ error : response.data.error });
         }
     } catch (error) {
-        console.error("Error fetching IRCTC userName", error.message);
-        res.status(500).json({ error : error.message });
+        console.error("Error fetching IRCTC userName", error.message.error);
+        res.status(200).json({ error : error.message.error });
     }
 };
 
