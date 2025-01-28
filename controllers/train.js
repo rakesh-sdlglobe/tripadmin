@@ -261,7 +261,7 @@ exports.getTrainSchedule = async (req, res) => {
 };
 
 exports.getBoardingStations = async (req, res) => {
-    console.log("263 came to call the boarding stations api.")
+    console.log("263 came to call the boarding stations api.",req.body)
     try {
         const { trainNumber, journeyDate, fromStnCode, toStnCode, jClass } = req.body;
 
@@ -279,6 +279,28 @@ exports.getBoardingStations = async (req, res) => {
         res.status(500).json({ message: "Failed while fetching train boarding stations" });
     }
 };
+
+
+exports.getUsernameFromIRCTC = async (req, res) => {
+    console.log("263 came to call the boarding stations api.",req.params)
+    try {
+        const { userName } = req.params;
+
+        const url = `https://stagews.irctc.co.in/eticketing/webservices/taprofileservices/getUserStatus/${userName}`
+        const response = await axios.get(url,auth);
+        console.log("271 code response", response.data)
+        if (response.data.status ) {
+            console.log("271 code response", response.data)    
+            res.status(200).json({ success : response.data.userId });
+        } else if (response.data.error){
+        res.status(200).json({ error : response.data.error });
+        }
+    } catch (error) {
+        console.error("Error fetching IRCTC userName", error.message);
+        res.status(500).json({ error : error.message });
+    }
+};
+
 
 
 // exports.getStation = (req, res) => {
