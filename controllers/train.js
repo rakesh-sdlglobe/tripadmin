@@ -188,8 +188,9 @@ exports.getTrains = async (req, res) => {
             if (!result.success) continue;
 
             const { data, trainIndex, quota } = result;
-            const { avlDayList, totalFare, enqClass, baseFare } = data;
-
+            const { avlDayList, totalFare, enqClass, baseFare, bkgCfg } = data;
+            const { applicableBerthTypes } = bkgCfg;
+            console.log("Booking config is ", applicableBerthTypes, );
             if (!avlDayList) continue;
 
             // Skip processing if train has departed
@@ -203,7 +204,8 @@ exports.getTrains = async (req, res) => {
                 totalFare,
                 baseFare,
                 enqClass,
-                quota
+                quota,
+                applicableBerthTypes,
             });
         }
 

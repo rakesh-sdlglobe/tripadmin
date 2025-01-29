@@ -36,13 +36,13 @@ exports.signup = async (req, res) => {
                 const newUserId = insertResults.insertId;
 
                 // Generate JWT token
-                const token = jwt.sign({ id: newUserId }, process.env.SECRET, { expiresIn: '24h' });
+                const token = jwt.sign({ id: newUserId }, process.env.SECRET, { expiresIn: '7d' });
 
                 // Return token and user info
                 res.status(201).json({
                     token,
                     user: { id: newUserId, name, email },
-                    expiresIn: 3600
+                    // expiresIn: 3600
                 });
             });
         });
@@ -83,7 +83,7 @@ exports.login = async (req, res) => {
             res.json({
                 token,
                 user: { id: user.id, name: user.name, email: user.email },
-                expiresIn: 3600
+                // expiresIn: 3600
             });
         });
     } catch (err) {
