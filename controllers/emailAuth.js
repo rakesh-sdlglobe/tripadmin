@@ -118,7 +118,7 @@ exports.verifyOtp = (req, res) => {
           return res.json({
             token,
             user: email,
-            expiresIn: 3600,
+            // expiresIn: 3600,
           });
         });
       } else {
@@ -143,7 +143,7 @@ exports.verifyOtp = (req, res) => {
             return res.json({
               token,
               user: email,
-              expiresIn: 3600,
+              // expiresIn: 3600,
             });
           }
         );
