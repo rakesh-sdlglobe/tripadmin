@@ -22,29 +22,44 @@ exports.sendOtp = async (req, res) => {
 
   if (!email) return res.status(400).send('Email is required');
 
-  // Generate a 6-digit OTP
-  const otp = crypto.randomInt(100000, 999999).toString();
+  // Check if the email exists in the database
+  db.query('SELECT user_id FROM users WHERE email = ?', [email], async (err, results) => {
+    if (err) {
+      console.error(err);
+      return res.status(500).send('Database error');
+    }
 
-  // Set OTP expiration time
-  const expirationTime = Date.now() + parseInt(process.env.OTP_EXPIRATION_MINUTES) * 60000;
-  otpStorage[email] = { otp, expirationTime };
+    if (results.length === 0) {
+      return res.status(404).send('Email not found');
+    }
 
-  // Mail options
-  const mailOptions = {
-    from: process.env.EMAIL_USER,
-    to: email,
-    subject: 'Your OTP Code',
-    text: `Your OTP code is ${otp}. It will expire in ${process.env.OTP_EXPIRATION_MINUTES} minutes.`,
-  };
+    // Generate a 6-digit OTP
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
 
-  try {
-    await transporter.sendMail(mailOptions);
-    res.status(200).send('OTP sent to your email');
-  } catch (error) {
-    console.error(error);
-    res.status(500).send('Error sending email');
-  }
+    // Set OTP expiration time
+    const expirationTime = Date.now() + parseInt(process.env.OTP_EXPIRATION_MINUTES) * 60000;
+    otpStorage[email] = { otp, expirationTime };
+
+    // Mail options
+    const mailOptions = {
+      from: process.env.EMAIL_USER,
+      to: email,
+      subject: 'Your OTP Code',
+      text: `Your OTP code is ${otp}. It will expire in ${process.env.OTP_EXPIRATION_MINUTES} minutes.`,
+    };
+
+    // Send OTP email
+    transporter.sendMail(mailOptions, (mailErr, info) => {
+      if (mailErr) {
+        console.error(mailErr);
+        return res.status(500).send('Error sending email');
+      }
+
+      res.status(200).send('OTP sent to your email');
+    });
+  });
 };
+
 
 // Verify OTP
 // exports.verifyOtp = (req, res) => {
@@ -98,7 +113,7 @@ exports.verifyOtp = (req, res) => {
     delete otpStorage[email]; // Clear OTP after successful verification
 
     // Check if the email exists in the database
-    db.query('SELECT id, email FROM users WHERE email = ?', [email], (err, results) => {
+    db.query('SELECT user_id, email FROM users WHERE email = ?', [email], (err, results) => {
       if (err) {
         console.error('Database error:', err);
         return res.status(500).send('Internal server error');
@@ -114,7 +129,7 @@ exports.verifyOtp = (req, res) => {
           }
 
           // Generate a token and return it
-          const token = jwt.sign({ id: user.id }, process.env.SECRET, { expiresIn: '24h' });
+          const token = jwt.sign({ user_id: user.user_id }, process.env.SECRET, { expiresIn: '7d' });
           return res.json({
             token,
             user: email,
@@ -123,13 +138,14 @@ exports.verifyOtp = (req, res) => {
         });
       } else {
         // Email does not exist, create a new user
-        const name = '';
+        const firstName = '';
+        const middleName = '';
+        const lastName = '';
         const password = ''; // Optional
-        const role = 'user';
 
         db.query(
-          'INSERT INTO users (name, email, password, role, createdAt, updatedAt, isEmailVerified) VALUES (?, ?, ?, ?, NOW(), NOW(), 1)',
-          [name, email, password, role],
+          'INSERT INTO users (firstName, middleName, lastName, email, password, createdAt, updatedAt, isEmailVerified) VALUES (?, ?, ?, ?, ?, NOW(), NOW(), 1)',
+          [firstName, middleName, lastName, email, password,],
           (insertErr, insertResults) => {
             if (insertErr) {
               console.error('Error creating new user:', insertErr);
@@ -139,7 +155,7 @@ exports.verifyOtp = (req, res) => {
             const newUserId = insertResults.insertId;
 
             // Generate a token and return it
-            const token = jwt.sign({ id: newUserId }, process.env.SECRET, { expiresIn: '24h' });
+            const token = jwt.sign({ user_id: newUserId }, process.env.SECRET, { expiresIn: '7d' });
             return res.json({
               token,
               user: email,
