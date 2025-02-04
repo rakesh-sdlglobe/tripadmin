@@ -186,11 +186,9 @@ exports.getTrains = async (req, res) => {
         // 4. Process results and update trains
         for (const result of results) {
             if (!result.success) continue;
-
             const { data, trainIndex, quota } = result;
             const { avlDayList, totalFare, enqClass, baseFare, bkgCfg } = data;
-            const { applicableBerthTypes } = bkgCfg;
-            console.log("Booking config is ", applicableBerthTypes, );
+
             if (!avlDayList) continue;
 
             // Skip processing if train has departed
@@ -199,14 +197,16 @@ exports.getTrains = async (req, res) => {
                 continue;
             }
 
-            trains[trainIndex].availabilities.push({
+            const availabilityData = {
                 avlDayList,
                 totalFare,
                 baseFare,
                 enqClass,
                 quota,
-                applicableBerthTypes,
-            });
+                ...(bkgCfg && { applicableBerthTypes: bkgCfg.applicableBerthTypes })  // Only add if bkgCfg exists
+            };
+            
+            trains[trainIndex].availabilities.push(availabilityData);
         }
 
         res.json({ ...trainsResponse.data, trainBtwnStnsList: trains });

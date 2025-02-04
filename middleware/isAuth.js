@@ -3,8 +3,7 @@ const jwt = require('jsonwebtoken');
 
 exports.token = (req, res, next) => {
   const authHeader = req.get("Authorization");
-  
-  
+
   if (!authHeader) {
     return res.status(401).json({ message: 'Authorization header missing' });
   }
@@ -14,15 +13,19 @@ exports.token = (req, res, next) => {
     return res.status(401).json({ message: 'Token missing' });
   }
 
-  let decodedToken;
   try {
-    decodedToken = jwt.verify(token, process.env.SECRET);
+    const decodedToken = jwt.verify(token, process.env.SECRET);
+    console.log("from isAuth.js ", decodedToken);
+    req.user = decodedToken.user_id; 
+    console.log("from isAuth.js ", req.user);
+    next(); 
   } catch (err) {
     console.error('JWT verification error:', err);
+
+    if (err.name === 'TokenExpiredError') {
+      return res.status(401).json({ message: 'Token expired. Please log in again.' });
+    }
+
     return res.status(401).json({ message: 'Invalid token' });
   }
-
-  req.user = decodedToken.id; 
-  
-  next();
 };

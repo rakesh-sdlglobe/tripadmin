@@ -30,15 +30,17 @@ exports.getRecentUsers = async (req, res) => {
 exports.getUserProfile = async (req, res) => {
   try {
     // Get email from decoded JWT token
-    const id = req.user;
+    const user_id = req.user;
+    console.log(req.user);
+    
 
     const query = `
-      SELECT name, email, lastname, mobile, gender, dob, isEmailVerified, isMobileVerified, filepath
+      SELECT firstName, middleName, lastName, email, mobile, gender, dob, isEmailVerified, isMobileVerified
       FROM users 
-      WHERE id = ?;
+      WHERE user_id = ?;
     `;
 
-    connection.query(query, [id], (err, results) => {
+    connection.query(query, [user_id], (err, results) => {
       if (err) {
         console.error('Error fetching user profile:', err);
         return res.status(500).json({ message: "Internal server error" });
@@ -61,7 +63,7 @@ exports.getUserProfile = async (req, res) => {
 exports.editUserProfile = async (req, res) => {
   console.log("59 req data ", req.body);
   try {
-    let { name, lastname, mobile, dob, gender, email } = req.body;
+    let { firstname, lastname, mobile, dob, gender, email } = req.body;
 
     const updateQuery = `
       UPDATE users 

@@ -7,7 +7,7 @@ const { default: axios } = require("axios");
 
 // Signup Controller
 exports.signup = async (req, res) => {
-    const { name, email, password } = req.body;
+    const { firstName,middleName, lastName, email, password } = req.body;
 
     try {
         // Check if the user already exists
@@ -26,8 +26,8 @@ exports.signup = async (req, res) => {
             const hashedPassword = await bcrypt.hash(password, salt);
 
             // Insert new user into the database
-            const query = 'INSERT INTO users (name, email, password) VALUES (?, ?, ?)';
-            connection.query(query, [name, email, hashedPassword], (insertErr, insertResults) => {
+            const query = 'INSERT INTO users (firstName, middleName, lastName, email, password) VALUES (?, ?, ?, ?, ?)';
+            connection.query(query, [firstName,middleName, lastName, email, hashedPassword], (insertErr, insertResults) => {
                 if (insertErr) {
                     console.error('Database insert error:', insertErr);
                     return res.status(500).json({ message: 'Server error' });
@@ -36,13 +36,12 @@ exports.signup = async (req, res) => {
                 const newUserId = insertResults.insertId;
 
                 // Generate JWT token
-                const token = jwt.sign({ id: newUserId }, process.env.SECRET, { expiresIn: '7d' });
+                const token = jwt.sign({ user_id: newUserId }, process.env.SECRET, { expiresIn: '7d' });
 
                 // Return token and user info
                 res.status(201).json({
                     token,
-                    user: { id: newUserId, name, email },
-                    // expiresIn: 3600
+                    user: { user_id: newUserId, firstName, middleName, lastName, email },
                 });
             });
         });
@@ -69,7 +68,7 @@ exports.login = async (req, res) => {
             }
 
             const user = results[0]; // Get the user from the query result
-
+            console.log(user);
             // Compare the provided password with the stored hashed password
             const isMatch = await bcrypt.compare(password, user.password);
             if (!isMatch) {
@@ -77,12 +76,12 @@ exports.login = async (req, res) => {
             }
     
             // Generate JWT token
-            const token = jwt.sign({ id: user.id }, process.env.SECRET, { expiresIn: '24h' });
+            const token = jwt.sign({ user_id: user.user_id }, process.env.SECRET, { expiresIn: '7d' });
 
             // Return the token and user information
             res.json({
                 token,
-                user: { id: user.id, name: user.name, email: user.email },
+                user: { user_id: user.user_id, firstName: user.firstName,lastName: user.lastName, email: user.email },
                 // expiresIn: 3600
             });
         });
@@ -105,17 +104,28 @@ exports.googleAuth = async (req, res) => {
         const { data: userInfo } = await axios.get(USER_INFO_URL, {
             headers: { Authorization: `Bearer ${googleToken}` },
         });
+        console.log("User info data ", userInfo);
 
+        // Extracting name and splitting into parts
+        const fullName = userInfo.name || '';
+        const nameParts = fullName.trim().split(" ");
+        
+        const firstName = nameParts[0] || "";
+        const middleName = nameParts.length > 2 ? nameParts.slice(1, -1).join(" ") : "";
+        const lastName = nameParts.length > 1 ? nameParts[nameParts.length - 1] : "";
+        
+        // Destructuring other fields from userInfo
         const {
             email,
-            given_name: firstName,
-            family_name: lastName,
             email_verified: isEmailVerified,
         } = userInfo;
-
+        
         if (!email) {
             return res.status(400).json({ message: 'User email is required' });
         }
+        
+        // Logging the extracted values
+        console.log({ firstName, middleName, lastName, email, isEmailVerified });        
 
         // Check if the user exists in the database
         connection.query(
@@ -128,8 +138,9 @@ exports.googleAuth = async (req, res) => {
                 }
 
                 const userData = {
-                    name: firstName,
-                    lastname: lastName,
+                    firstName: firstName,
+                    middleName: middleName,
+                    lastName: lastName,
                     email,
                     isEmailVerified: isEmailVerified ? 1 : 0,
                 };
@@ -138,34 +149,34 @@ exports.googleAuth = async (req, res) => {
                     // User exists, update their information
                     const updateQuery = `
                         UPDATE users 
-                        SET name = ?, lastname = ?, isEmailVerified = ?, updatedAt = NOW()
+                        SET firstName = ?, middleName = ?, lastName = ?, isEmailVerified = ?, updatedAt = NOW()
                         WHERE email = ?
                     `;
                     connection.query(
                         updateQuery,
-                        [firstName, lastName, isEmailVerified ? 1 : 0, email],
+                        [firstName, middleName, lastName, isEmailVerified ? 1 : 0, email],
                         (updateError) => {
                             if (updateError) {
                                 console.error('Error updating user:', updateError);
                                 return res.status(500).json({ message: 'Failed to update user' });
                             }
+
+                            console.log('User info updated:', results[0]);
                             // Generate JWT token
                             const jwtToken = jwt.sign(
                                 {
-                                    id: results[0].id,
+                                    user_id: results[0].user_id,
                                     email,
-                                    role: results[0].role,
                                 },
                                 process.env.SECRET, // Replace with a secure secret key
-                                { expiresIn: '24h' }
+                                { expiresIn: '7d' }
                             );
 
                             return res.status(200).json({
                                 token: jwtToken,
                                 user: {
-                                    id: results[0].id,
+                                    user_id: results[0].user_id,
                                     ...userData,
-                                    role: results[0].role,
                                 },
                             });
                         }
@@ -173,12 +184,12 @@ exports.googleAuth = async (req, res) => {
                 } else {
                     // User does not exist, insert a new record
                     const insertQuery = `
-                        INSERT INTO users (name, lastname, email, role, password, isEmailVerified, createdAt, updatedAt)
+                        INSERT INTO users (firstName, middleName, lastName, email, password, isEmailVerified, createdAt, updatedAt)
                         VALUES (?, ?, ?, ?, ?, ?, NOW(), NOW())
                     `;
                     connection.query(
                         insertQuery,
-                        [firstName, lastName, email, 'user', '', isEmailVerified ? 1 : 0],
+                        [firstName, middleName, lastName, email, '', isEmailVerified ? 1 : 0],
                         (insertError, results) => {
                             if (insertError) {
                                 console.error('Error inserting user:', insertError);
@@ -188,20 +199,18 @@ exports.googleAuth = async (req, res) => {
                             // Generate JWT token
                             const jwtToken = jwt.sign(
                                 {
-                                    id: results.insertId,
+                                    user_id: results.insertId,
                                     email,
-                                    role: 'user',
                                 },
-                                process.env.SECRET, // Replace with a secure secret key
-                                { expiresIn: '24h' }
+                                process.env.SECRET, 
+                                { expiresIn: '7d' }
                             );
 
                             return res.status(201).json({
                                 token: jwtToken,
                                 user: {
-                                    id: results.insertId,
+                                    user_id: results.insertId,
                                     ...userData,
-                                    role: 'user',
                                 },
                             });
                         }
