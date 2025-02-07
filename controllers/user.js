@@ -143,31 +143,126 @@ exports.myBookings = async (req, res) => {
 
 // Add Traveller
 exports.addTraveller = async (req, res) => {
-  console.log("YES add trav triggered..")
+  console.log("Passenger API triggered..");
+  const user_id = req.user;
   try {
-    const { firstname, lastname, mobile, dob } = req.body;    
-    const userId = req.user;
+    const {
+      passengerName,
+      passengerAge,
+      passengerGender,
+      passengerBerthChoice,
+      passengerFoodChoice,
+      passengerBedrollChoice,
+      passengerConcession,
+      concessionOpted,
+      passengerIcardFlag,
+      passengerCardType,
+      passengerCardNumber,
+      bookingStatusIndex,
+      bookingStatus,
+      bookingCoachId,
+      bookingBerthNo,
+      bookingBerthCode,
+      currentStatusIndex,
+      currentStatus,
+      currentCoachId,
+      currentBerthNo,
+      currentBerthCode,
+      passengerNetFare,
+      currentBerthChoice,
+      childBerthFlag,
+      passengerNationality,
+      insuranceIssued,
+      policyNumber,
+      forGoConcessionOpted,
+    } = req.body;
 
-    if (!firstname || !lastname || !userId) {
-      return res.status(400).json({ message: "Please provide all required fields: firstname, lastname, userId" });
-    }
-
-    const query = `
-      INSERT INTO travellers (firstname, lastname, mobile, dob, user_id) 
-      VALUES (?, ?, ?, ?, ?);
-    `;
-    
-    connection.query(query, [firstname, lastname, mobile, dob, userId], (err, results) => {
+    const checkQuery = `SELECT passengerId FROM passengers WHERE user_id = ? AND passengerName = ? AND passengerAge = ?`;
+    connection.query(checkQuery, [user_id, passengerName, passengerAge], (err, results) => {
       if (err) {
-        console.error('Error adding traveller:', err);
-        return res.status(500).json({ message: 'Internal server error', error: err.message });
+        console.error("Error checking passenger:", err);
+        return res.status(500).json({ message: "Database error", error: err.message });
       }
-      console.log("happened for ",firstname,results)
-      res.status(200).json({ message: 'Traveller added successfully' });
+
+      if (results.length > 0) {
+        updatePassenger(results[0].passengerId);
+      } else {
+        insertPassenger();
+      }
     });
+
+    const updatePassenger = (passengerId) => {
+      const updateFields = [];
+      const values = [];
+
+      const fieldsToUpdate = {
+        passengerAge, passengerGender, passengerBerthChoice, passengerFoodChoice,
+        passengerBedrollChoice, passengerConcession, concessionOpted, passengerIcardFlag,
+        passengerCardType, passengerCardNumber, bookingStatusIndex, bookingStatus,
+        bookingCoachId, bookingBerthNo, bookingBerthCode, currentStatusIndex, currentStatus,
+        currentCoachId, currentBerthNo, currentBerthCode, passengerNetFare, currentBerthChoice,
+        childBerthFlag, passengerNationality, insuranceIssued, policyNumber, forGoConcessionOpted
+      };
+
+      Object.entries(fieldsToUpdate).forEach(([key, value]) => {
+        if (value !== undefined) {
+          updateFields.push(`${key} = ?`);
+          values.push(value);
+        }
+      });
+
+      if (updateFields.length > 0) {
+        const updateQuery = `UPDATE passengers SET ${updateFields.join(", ")} WHERE passengerId = ?`;
+        values.push(passengerId);
+
+        connection.query(updateQuery, values, (updateErr, updateResults) => {
+          if (updateErr) {
+            console.error("Error updating passenger:", updateErr);
+            return res.status(500).json({ message: "Database error", error: updateErr.message });
+          }
+          return res.status(200).json({ message: "Passenger updated successfully" });
+        });
+      } else {
+        return res.status(200).json({ message: "No new data to update" });
+      }
+    };
+
+    const insertPassenger = () => {
+      const insertQuery = `
+        INSERT INTO passengers (
+          user_id, passengerName, passengerAge, passengerGender, 
+          passengerBerthChoice, passengerFoodChoice, passengerBedrollChoice, 
+          passengerConcession, concessionOpted, passengerIcardFlag, 
+          passengerCardType, passengerCardNumber, bookingStatusIndex, 
+          bookingStatus, bookingCoachId, bookingBerthNo, bookingBerthCode, 
+          currentStatusIndex, currentStatus, currentCoachId, currentBerthNo, 
+          currentBerthCode, passengerNetFare, currentBerthChoice, childBerthFlag, 
+          passengerNationality, insuranceIssued, policyNumber, forGoConcessionOpted
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `;
+
+      const values = [
+        user_id, passengerName, passengerAge, passengerGender,
+        passengerBerthChoice, passengerFoodChoice, passengerBedrollChoice,
+        passengerConcession, concessionOpted, passengerIcardFlag,
+        passengerCardType, passengerCardNumber, bookingStatusIndex,
+        bookingStatus, bookingCoachId, bookingBerthNo, bookingBerthCode,
+        currentStatusIndex, currentStatus, currentCoachId, currentBerthNo,
+        currentBerthCode, passengerNetFare, currentBerthChoice, childBerthFlag,
+        passengerNationality, insuranceIssued, policyNumber, forGoConcessionOpted
+      ];
+
+      connection.query(insertQuery, values, (insertErr, insertResults) => {
+        if (insertErr) {
+          console.error("Error adding passenger:", insertErr);
+          return res.status(500).json({ message: "Database error", error: insertErr.message });
+        }
+        return res.status(201).json({ message: "Passenger added successfully" });
+      });
+    };
   } catch (error) {
-    console.error('Error details:', error);
-    res.status(500).json({ message: 'Internal server error', error: error.message });
+    console.error("Error details:", error);
+    res.status(500).json({ message: "Internal server error", error: error.message });
   }
 };
 
@@ -178,7 +273,7 @@ exports.getTravelers = async (req, res) => {
 
     const query = `
       SELECT *
-      FROM travellers 
+      FROM passengers 
       WHERE user_id = ?;
     `;
 
@@ -207,8 +302,8 @@ exports.removeTraveller = async (req, res) => {
     }
 
     const query = `
-      DELETE FROM travellers 
-      WHERE id = ? AND user_id = ?;
+      DELETE FROM passengers 
+      WHERE passengerId = ? AND user_id = ?;
     `;
 
     connection.query(query, [id, userId], (err, result) => {
