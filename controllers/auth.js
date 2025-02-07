@@ -224,6 +224,94 @@ exports.googleAuth = async (req, res) => {
     }
 };
 
+//mobile google login
+exports.googleUserData = (req, res) => {
+    const userData = req.body;
+    console.log('Received User Data:', JSON.stringify(userData));
+
+    // Check if required fields exist
+    if (!userData || !userData.email) {
+        return res.status(400).json({ message: 'User email is required' });
+    }
+
+    // Extract user details
+    const { name, email, isEmailVerified } = userData;
+    const [firstName, lastName = ''] = name.split(' '); // Handles missing last name
+
+    // Check if the user exists in the database
+    connection.query('SELECT * FROM users WHERE email = ?', [email], (error, results) => {
+        if (error) {
+            console.error('Database query error:', error);
+            return res.status(500).json({ message: 'Database error' });
+        }
+
+        const userDataToSave = {
+            name: firstName,
+            lastname: lastName,
+            email,
+            role: 'user',
+            password: '', // Empty password
+            isEmailVerified: isEmailVerified ? 1 : 0, // Convert to 1 or 0 for consistency
+        };
+
+        console.log('User Data to Save:', JSON.stringify(userDataToSave));
+
+        if (results.length > 0) {
+            // User exists, update their information
+            const updateQuery = `
+                UPDATE users
+                SET name = ?, lastname = ?, isEmailVerified = ?, updatedAt = NOW()
+                WHERE email = ?
+            `;
+            connection.query(
+                updateQuery,
+                [firstName, lastName, userDataToSave.isEmailVerified, email],
+                (updateError, updateResults) => {
+                    if (updateError) {
+                        console.error('Error updating user:', updateError);
+                        return res.status(500).json({ message: 'Failed to update user' });
+                    }
+
+                    console.log('User updated:', updateResults);
+                    return res.status(200).json({
+                        message: 'User updated successfully',
+                        user: {
+                            id: results[0].id,
+                            ...userDataToSave,
+                            role: results[0].role,
+                        },
+                    });
+                }
+            );
+        } else {
+            // User does not exist, insert a new record
+            const insertQuery = `
+                INSERT INTO users (name, lastname, email, role, password, isEmailVerified, createdAt, updatedAt)
+                VALUES (?, ?, ?, ?, ?, ?, NOW(), NOW())
+            `;
+            connection.query(
+                insertQuery,
+                [firstName, lastName, email, userDataToSave.role, userDataToSave.password, userDataToSave.isEmailVerified],
+                (insertError, insertResults) => {
+                    if (insertError) {
+                        console.error('Error inserting user:', insertError);
+                        return res.status(500).json({ message: 'Failed to create user' });
+                    }
+
+                    console.log('User inserted:', insertResults);
+                    return res.status(201).json({
+                        message: 'User created successfully',
+                        user: {
+                            id: insertResults.insertId,
+                            ...userDataToSave,
+                        },
+                    });
+                }
+            );
+        }
+    });
+};
+
 
 
 exports.deleteUser = async (req, res) => {
