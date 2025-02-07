@@ -45,72 +45,6 @@ exports.getStation = async (req, res) => {
 
 }
 
-
-// exports.getTrains = async (req, res) => {
-//     // console.log("req",req);
-//     let { fromStnCode, toStnCode, journeyDate, paymentEnqFlag = "N" } = req.body;
-//     // console.log("req body" , req.body);
-//     const jQuotaList  = ["GN","TQ","LD","PT"]
-//     avlDayList = []
-
-//     console.log(fromStnCode, toStnCode, journeyDate);
-//     try {
-//         const url = `https://stagews.irctc.co.in/eticketing/webservices/taenqservices/tatwnstns/${fromStnCode}/${toStnCode}/${journeyDate}`;
-//         let response = await axios.get(url,auth, { headers: apiHeaders });
-//         console.log("Now trying the fare enquiry details for the trains");
-//         console.log("respnse is ",response.data)
-//         let trains = response.data?.trainBtwnStnsList;
-
-//         const bodyContent = {
-//             "masterId": "WSMTB2C00000",
-//             "enquiryType": "3",
-//             "reservationChoice": "99",
-//             "moreThanOneDay": "true"
-//         }
-        
-//         for (let i = 0; i < trains?.length; i++) {
-//             trains[i].availabilities = []
-//             const { trainNumber, avlClasses, fromStnCode, toStnCode } = trains[i];
-//             // Iterate over available classes for each train
-//             for (let j = 0; j < jQuotaList?.length; j ++){
-//                 let jQuota = jQuotaList[j]
-//                 for (let cls of avlClasses) {
-//                     console.log("Cls value is ", cls)
-                    
-//                     let trainFareAPIUrl = `https://stagews.irctc.co.in/eticketing/webservices/taenqservices/avlFareenquiry/${trainNumber}/${journeyDate}/${fromStnCode}/${toStnCode}/${cls}/${jQuota}/${paymentEnqFlag}`;
-                    
-//                     let fareDetailedTrainData = await axios.post(trainFareAPIUrl, bodyContent, auth, { headers: apiHeaders });
-                    
-//                     let { avlDayList, totalFare, enqClass, quota } = fareDetailedTrainData.data
-//                     if(avlDayList ){
-//                         // if (quota == "LD" && avlDayList?.[0]?.availablityStatus === "NOT AVAILABLE") continue;
-
-//                         fareDetailedTrainData = { avlDayList, totalFare, enqClass, quota } 
-//                         trains[i].availabilities.push(fareDetailedTrainData) ;
-//                         if ((quota === "TQ" || quota === "PT") && avlDayList[0]?.availablityStatus === "TRAIN DEPARTED") {
-//                             console.log("Train has departed. Breaking out of the loop.");
-//                             break;  // Break out of the inner loop for this quota and don't iterate for the next class
-//                         }
-//                     }
-//                     // if(avlDayList?.[0]?.availablityStatus == "TRAIN DEPARTED") break;
-
-//                 }
-//                 // if(avlDayList?.[0]?.availablityStatus == "TRAIN DEPARTED") break;
-
-//             }
-//         }
-        
-//         // After all the trains are updated, assign the updated trains back to response.data
-//         response.data.trainBtwnStnsList = trains;
-        
-//         res.json(response.data);  // Sending updated response back to the client
-        
-//     } catch (error) {
-//         console.error('Error fetching trains:', error.response ? error.response.data : error.message);
-//         res.status(500).json({ message: 'Failed to fetch trains', error : error.response ? error.response.data : error.message });
-//     }
-// } 
-
 exports.getTrains = async (req, res) => {
     const { fromStnCode, toStnCode, journeyDate, paymentEnqFlag = "N" } = req.body;
     const jQuotaList = ["GN", "TQ", "LD", "PT"];
@@ -302,6 +236,93 @@ exports.getUsernameFromIRCTC = async (req, res) => {
         res.status(200).json({ error : error.message.error });
     }
 };
+
+exports.getCountryList = async (req, res) => {
+    try{
+        const url = "https://stagews.irctc.co.in/eticketing/webservices/userregistrationservice/country";
+        const response = await axios.get(url,auth);
+        console.log("271 code response", response.data)
+        if(response.data.countryList)
+            res.status(200).json(response.data?.countryList);
+        else
+            console.log("Country list not found", response.data);
+            res.status(404).json({ message: "Country list not found" });
+    }catch(error){
+        console.log("Error in fetching the country list", error);
+        res.status(500).json({ message: "Failed to fetch country list" });
+    }
+}
+
+
+
+
+// exports.getTrains = async (req, res) => {
+//     // console.log("req",req);
+//     let { fromStnCode, toStnCode, journeyDate, paymentEnqFlag = "N" } = req.body;
+//     // console.log("req body" , req.body);
+//     const jQuotaList  = ["GN","TQ","LD","PT"]
+//     avlDayList = []
+
+//     console.log(fromStnCode, toStnCode, journeyDate);
+//     try {
+//         const url = `https://stagews.irctc.co.in/eticketing/webservices/taenqservices/tatwnstns/${fromStnCode}/${toStnCode}/${journeyDate}`;
+//         let response = await axios.get(url,auth, { headers: apiHeaders });
+//         console.log("Now trying the fare enquiry details for the trains");
+//         console.log("respnse is ",response.data)
+//         let trains = response.data?.trainBtwnStnsList;
+
+//         const bodyContent = {
+//             "masterId": "WSMTB2C00000",
+//             "enquiryType": "3",
+//             "reservationChoice": "99",
+//             "moreThanOneDay": "true"
+//         }
+        
+//         for (let i = 0; i < trains?.length; i++) {
+//             trains[i].availabilities = []
+//             const { trainNumber, avlClasses, fromStnCode, toStnCode } = trains[i];
+//             // Iterate over available classes for each train
+//             for (let j = 0; j < jQuotaList?.length; j ++){
+//                 let jQuota = jQuotaList[j]
+//                 for (let cls of avlClasses) {
+//                     console.log("Cls value is ", cls)
+                    
+//                     let trainFareAPIUrl = `https://stagews.irctc.co.in/eticketing/webservices/taenqservices/avlFareenquiry/${trainNumber}/${journeyDate}/${fromStnCode}/${toStnCode}/${cls}/${jQuota}/${paymentEnqFlag}`;
+                    
+//                     let fareDetailedTrainData = await axios.post(trainFareAPIUrl, bodyContent, auth, { headers: apiHeaders });
+                    
+//                     let { avlDayList, totalFare, enqClass, quota } = fareDetailedTrainData.data
+//                     if(avlDayList ){
+//                         // if (quota == "LD" && avlDayList?.[0]?.availablityStatus === "NOT AVAILABLE") continue;
+
+//                         fareDetailedTrainData = { avlDayList, totalFare, enqClass, quota } 
+//                         trains[i].availabilities.push(fareDetailedTrainData) ;
+//                         if ((quota === "TQ" || quota === "PT") && avlDayList[0]?.availablityStatus === "TRAIN DEPARTED") {
+//                             console.log("Train has departed. Breaking out of the loop.");
+//                             break;  // Break out of the inner loop for this quota and don't iterate for the next class
+//                         }
+//                     }
+//                     // if(avlDayList?.[0]?.availablityStatus == "TRAIN DEPARTED") break;
+
+//                 }
+//                 // if(avlDayList?.[0]?.availablityStatus == "TRAIN DEPARTED") break;
+
+//             }
+//         }
+        
+//         // After all the trains are updated, assign the updated trains back to response.data
+//         response.data.trainBtwnStnsList = trains;
+        
+//         res.json(response.data);  // Sending updated response back to the client
+        
+//     } catch (error) {
+//         console.error('Error fetching trains:', error.response ? error.response.data : error.message);
+//         res.status(500).json({ message: 'Failed to fetch trains', error : error.response ? error.response.data : error.message });
+//     }
+// } 
+
+
+
 
 
 

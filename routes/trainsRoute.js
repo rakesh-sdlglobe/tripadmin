@@ -9,5 +9,6 @@ router.post('/getTrains/avlFareEnquiry', trainController.getTrainsAvailableFareE
 router.get('/getTrainSchedule/:trainNumber', trainController.getTrainSchedule);
 router.post('/getBoardingStations', trainController.getBoardingStations);
 router.get('/getUsernameFromIRCTC/:userName', trainController.getUsernameFromIRCTC);
+router.get('/getCountryList', trainController.getCountryList);
 
 module.exports = router;
