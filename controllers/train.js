@@ -227,7 +227,14 @@ exports.getUsernameFromIRCTC = async (req, res) => {
         console.log("271 code response", response.data)
         if (response.data.status ) {
             console.log("271 code response", response.data)    
-            res.status(200).json({ success : response.data.userId });
+            connection.query(`update users set userName = ? where user_id = ?`, [response.data.userId, req.user], (error, results) => {
+                if (error) {
+                    console.error("Error updating user details:", error);
+                    return res.status(500).json({ error: "Internal Server Error" });
+                }
+                res.status(200).json({ success : response.data.userId });
+            });
+            // res.status(200).json({ success : response.data.userId });
         } else if (response.data.error){
         res.status(200).json({ error : response.data.error });
         }
