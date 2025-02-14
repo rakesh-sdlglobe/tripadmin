@@ -8,7 +8,7 @@ router.post('/getTrains', trainController.getTrains);
 router.post('/getTrains/avlFareEnquiry', trainController.getTrainsAvailableFareEnquiry);
 router.get('/getTrainSchedule/:trainNumber', trainController.getTrainSchedule);
 router.post('/getBoardingStations', trainController.getBoardingStations);
-router.get('/getUsernameFromIRCTC/:userName', trainController.getUsernameFromIRCTC);
+router.get('/getUsernameFromIRCTC/:userName',isAuth.token, trainController.getUsernameFromIRCTC);
 router.get('/getCountryList', trainController.getCountryList);
 
 module.exports = router;

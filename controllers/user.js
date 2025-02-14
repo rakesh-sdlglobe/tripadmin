@@ -145,8 +145,10 @@ exports.myBookings = async (req, res) => {
 exports.addTraveller = async (req, res) => {
   console.log("Passenger API triggered..");
   const user_id = req.user;
+  
   try {
     const {
+      passengerId, // Receiving passengerId in request
       passengerName,
       passengerAge,
       passengerGender,
@@ -177,21 +179,8 @@ exports.addTraveller = async (req, res) => {
       forGoConcessionOpted,
     } = req.body;
 
-    const checkQuery = `SELECT passengerId FROM passengers WHERE user_id = ? AND passengerName = ? AND passengerAge = ?`;
-    connection.query(checkQuery, [user_id, passengerName, passengerAge], (err, results) => {
-      if (err) {
-        console.error("Error checking passenger:", err);
-        return res.status(500).json({ message: "Database error", error: err.message });
-      }
-
-      if (results.length > 0) {
-        updatePassenger(results[0].passengerId);
-      } else {
-        insertPassenger();
-      }
-    });
-
-    const updatePassenger = (passengerId) => {
+    if (passengerId) {
+      // ✅ UPDATE Passenger if passengerId exists
       const updateFields = [];
       const values = [];
 
@@ -225,9 +214,9 @@ exports.addTraveller = async (req, res) => {
       } else {
         return res.status(200).json({ message: "No new data to update" });
       }
-    };
 
-    const insertPassenger = () => {
+    } else {
+      // ✅ INSERT New Passenger if passengerId does not exist
       const insertQuery = `
         INSERT INTO passengers (
           user_id, passengerName, passengerAge, passengerGender, 
@@ -257,14 +246,17 @@ exports.addTraveller = async (req, res) => {
           console.error("Error adding passenger:", insertErr);
           return res.status(500).json({ message: "Database error", error: insertErr.message });
         }
-        return res.status(201).json({ message: "Passenger added successfully" });
+        return res.status(201).json({ message: "Passenger added successfully", passengerId: insertResults.insertId });
       });
-    };
+    }
+
   } catch (error) {
     console.error("Error details:", error);
     res.status(500).json({ message: "Internal server error", error: error.message });
   }
 };
+
+
 
 // Get Travellers
 exports.getTravelers = async (req, res) => {
@@ -282,7 +274,7 @@ exports.getTravelers = async (req, res) => {
         console.error('Error fetching travelers:', err);
         return res.status(500).json({ message: "Internal server error" });
       }
-      
+      console.log("Travelers are ", travelers);
       res.status(200).json(travelers);
     });
   } catch (error) {
