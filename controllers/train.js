@@ -16,12 +16,21 @@ const auth = {
 const apiHeaders = {
     "Content-Type": "application/json",
     "Accept-Encoding": "gzip,deflate",
-    "Host": "stagews.irctc.co.in"
+    "Host": "stagews.irctc.co.in",
+    'Accept': 'application/json',
+    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
 };
 
 exports.getStation = async (req, res) => {
     try {
-        const apiResponse = await axios.get('https://www.irctc.co.in/eticketing/StationListServlet.js');
+        const apiResponse = await axios.get('https://www.irctc.co.in/eticketing/StationListServlet.js',{
+            headers: {
+                'Content-Type': 'application/json',
+                'Accept': 'application/json',
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+            },
+            timeout: 10000 // 10 seconds timeout
+        });
         // console.log("Fetched stations from IRCTC API successfully.", apiResponse.data);
         const responseData = apiResponse.data; // Example: 'var stationName=[...]';
         
