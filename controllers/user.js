@@ -72,7 +72,7 @@ exports.editUserProfile = async (req, res) => {
     `;
 
     // Update the user profile
-    connection.query(updateQuery, [firstName,middleName, lastName, mobile, dob, gender, email, req.user_id], (err, result) => {
+    connection.query(updateQuery, [firstName,middleName, lastName, mobile, dob, gender, email, req.user], (err, result) => {
       if (err) {
         console.error('Error updating user profile:', err);
         return res.status(500).json({ message: "Internal server error" });
@@ -80,7 +80,7 @@ exports.editUserProfile = async (req, res) => {
 
       // Fetch the updated user profile
       const fetchQuery = `SELECT firstName, middleName, lastName, mobile, gender, email, isEmailVerified, isMobileVerified, DATE_FORMAT(dob, '%Y-%m-%d') AS dob FROM users WHERE user_id = ?;`;
-      connection.query(fetchQuery, [req.user_id], (err, rows) => {
+      connection.query(fetchQuery, [req.user], (err, rows) => {
         if (err) {
           console.error('Error fetching updated user profile:', err);
           return res.status(500).json({ message: "Internal server error" });
