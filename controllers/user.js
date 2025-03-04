@@ -185,12 +185,34 @@ exports.addTraveller = async (req, res) => {
       const values = [];
 
       const fieldsToUpdate = {
-        passengerAge, passengerGender, passengerBerthChoice, passengerFoodChoice,
-        passengerBedrollChoice, passengerConcession, concessionOpted, passengerIcardFlag,
-        passengerCardType, passengerCardNumber, bookingStatusIndex, bookingStatus,
-        bookingCoachId, bookingBerthNo, bookingBerthCode, currentStatusIndex, currentStatus,
-        currentCoachId, currentBerthNo, currentBerthCode, passengerNetFare, currentBerthChoice,
-        childBerthFlag, passengerNationality, insuranceIssued, policyNumber, forGoConcessionOpted
+        passengerName,
+        passengerAge,
+        passengerGender,
+        passengerBerthChoice,
+        passengerFoodChoice,
+        passengerBedrollChoice,
+        passengerConcession,
+        concessionOpted,
+        passengerIcardFlag,
+        passengerCardType,
+        passengerCardNumber,
+        bookingStatusIndex,
+        bookingStatus,
+        bookingCoachId,
+        bookingBerthNo,
+        bookingBerthCode,
+        currentStatusIndex,
+        currentStatus,
+        currentCoachId,
+        currentBerthNo,
+        currentBerthCode,
+        passengerNetFare,
+        currentBerthChoice,
+        childBerthFlag,
+        passengerNationality,
+        insuranceIssued,
+        policyNumber,
+        forGoConcessionOpted,
       };
 
       Object.entries(fieldsToUpdate).forEach(([key, value]) => {
