@@ -63,24 +63,24 @@ exports.getUserProfile = async (req, res) => {
 exports.editUserProfile = async (req, res) => {
   console.log("59 req data ", req.body);
   try {
-    let { firstname, lastname, mobile, dob, gender, email } = req.body;
+    let { firstName, middleName, lastName, mobile, dob, gender, email } = req.body;
 
     const updateQuery = `
       UPDATE users 
-      SET name = ?, lastname = ?, mobile = ?, dob = ?, gender = ?, email = ? 
-      WHERE id = ?;
+      SET firstName = ?, middleName = ?, lastName = ?, mobile = ?, dob = ?, gender = ?, email = ? 
+      WHERE user_id = ?;
     `;
 
     // Update the user profile
-    connection.query(updateQuery, [name, lastname, mobile, dob, gender, email, req.user], (err, result) => {
+    connection.query(updateQuery, [firstName,middleName, lastName, mobile, dob, gender, email, req.user_id], (err, result) => {
       if (err) {
         console.error('Error updating user profile:', err);
         return res.status(500).json({ message: "Internal server error" });
       }
 
       // Fetch the updated user profile
-      const fetchQuery = `SELECT name, lastname, mobile, gender, email, isEmailVerified, isMobileVerified, filepath, DATE_FORMAT(dob, '%Y-%m-%d') AS dob FROM users WHERE id = ?;`;
-      connection.query(fetchQuery, [req.user], (err, rows) => {
+      const fetchQuery = `SELECT firstName, middleName, lastName, mobile, gender, email, isEmailVerified, isMobileVerified, DATE_FORMAT(dob, '%Y-%m-%d') AS dob FROM users WHERE user_id = ?;`;
+      connection.query(fetchQuery, [req.user_id], (err, rows) => {
         if (err) {
           console.error('Error fetching updated user profile:', err);
           return res.status(500).json({ message: "Internal server error" });
