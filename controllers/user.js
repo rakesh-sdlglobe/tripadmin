@@ -35,7 +35,7 @@ exports.getUserProfile = async (req, res) => {
     
 
     const query = `
-      SELECT firstName, middleName, lastName, email, mobile, gender, dob, isEmailVerified, isMobileVerified
+      SELECT userName, firstName, middleName, lastName, email, mobile, gender, dob, isEmailVerified, isMobileVerified
       FROM users 
       WHERE user_id = ?;
     `;

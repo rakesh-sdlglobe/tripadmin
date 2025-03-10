@@ -254,20 +254,23 @@ exports.getUsernameFromIRCTC = async (req, res) => {
 };
 
 exports.getCountryList = async (req, res) => {
-    try{
+    try {
         const url = "https://stagews.irctc.co.in/eticketing/webservices/userregistrationservice/country";
-        const response = await axios.get(url,auth);
-        console.log("271 code response", response.data)
-        if(response.data.countryList)
-            res.status(200).json(response.data?.countryList);
-        else
-            console.log("Country list not found", response.data);
-            res.status(404).json({ message: "Country list not found" });
-    }catch(error){
+        const response = await axios.get(url, auth);
+        console.log("271 code response", response.data);
+        
+        if (response.data?.countryList) {
+            return res.status(200).json(response.data.countryList); 
+        }
+
+        console.log("Country list not found", response.data);
+        return res.status(404).json({ message: "Country list not found" }); 
+    } catch (error) {
         console.log("Error in fetching the country list", error);
-        res.status(500).json({ message: "Failed to fetch country list" });
+        return res.status(500).json({ message: "Failed to fetch country list" });
     }
-}
+};
+
 
 
 
