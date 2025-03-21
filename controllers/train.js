@@ -271,8 +271,26 @@ exports.getCountryList = async (req, res) => {
     }
 };
 
-
-
+exports.getIRCTCForgotDetails = async (req, res) => {
+    try{
+        const { userName : userLoginId, email, mobile, dob, IRCTC_req_type, otpType } = req.body;
+        console.log("The body data of forgot 277 ", req.body);
+        
+        const url = `https://stagews.irctc.co.in/eticketing/webservices/taprofileservices/forgotDetails/${IRCTC_req_type}?userLoginId=${userLoginId}&email=${email}&mobile=${mobile}&otpType=${otpType}&dob=${dob}`
+        const response = await axios.get(url,auth);
+        console.log("data came ", response.data);
+        if(response.data.status){
+            console.log("284 Success.. ", response.data.status);
+            res.status(200).json({ Success : response.data.status });
+        }else{
+            console.log("Some thing went wrong in forgot IRCTC details ..", response.data);
+            res.status(200).json({ Error : response.data });
+        }
+    }catch(error){
+        console.log("Error in fething the Details", error);
+        return res.status(500).json({ message: "Failed to fetch the details" });
+    }
+}
 
 
 // exports.getTrains = async (req, res) => {
