@@ -10,5 +10,6 @@ router.get('/getTrainSchedule/:trainNumber', trainController.getTrainSchedule);
 router.post('/getBoardingStations', trainController.getBoardingStations);
 router.get('/getUsernameFromIRCTC/:userName',isAuth.token, trainController.getUsernameFromIRCTC);
 router.get('/getCountryList', trainController.getCountryList);
+router.post('/getForgotDetails', trainController.getIRCTCForgotDetails);
 
 module.exports = router;
