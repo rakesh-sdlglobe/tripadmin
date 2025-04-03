@@ -39,6 +39,7 @@ app.use(express.json());
 
 
 // Routes
+
 app.use('/api', authRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/booking',revenueRoutes);
@@ -46,6 +47,7 @@ app.use('/api/trains',trainRoutes);
 app.use('/api', emailRoutes);
 app.use('/api/password', passwordRoutes);
 app.use('/api/otp', otpRoutes);
+
 
 app.use('/api/uploads', express.static(path.join(__dirname, '/uploads')));
 

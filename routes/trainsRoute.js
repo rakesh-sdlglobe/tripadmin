@@ -3,6 +3,7 @@ const router = express.Router();
 const trainController = require('../controllers/train')
 const isAuth = require("../middleware/isAuth")
 
+router.get('', trainController.getMessage);
 router.get('/getStation', trainController.getStation);
 router.post('/getTrains', trainController.getTrains);
 router.post('/getTrains/avlFareEnquiry', trainController.getTrainsAvailableFareEnquiry);

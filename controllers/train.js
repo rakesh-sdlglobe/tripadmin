@@ -39,6 +39,9 @@ async function makeRequestWithRetry(promiseFn, maxRetries = 3, delay = 1000) {
     }
 }
 
+exports.getMessage = (req, res) => {
+    res.status(200).json({ message: "Hello from the Train Controller!" });  
+}
 
 exports.getStation = async (req, res) => {
     try {
