@@ -18,8 +18,27 @@ const apiHeaders = {
     "Accept-Encoding": "gzip,deflate",
     "Host": "stagews.irctc.co.in",
     'Accept': 'application/json',
-    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
+    'Connection': 'keep-alive' 
 };
+
+async function makeRequestWithRetry(promiseFn, maxRetries = 3, delay = 1000) {
+    let attempt = 0;
+    while (attempt < maxRetries) {
+        try {
+            return await promiseFn();
+        } catch (error) {
+            if (error.code === 'ECONNRESET' && attempt < maxRetries - 1) {
+                attempt++;
+                console.log(`Retrying... Attempt ${attempt}`);
+                await new Promise(resolve => setTimeout(resolve, delay));
+            } else {
+                throw error;
+            }
+        }
+    }
+}
+
 
 exports.getStation = async (req, res) => {
     try {
@@ -29,7 +48,7 @@ exports.getStation = async (req, res) => {
                 'Accept': 'application/json',
                 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
             },
-            timeout: 10000 // 10 seconds timeout
+            // timeout: 10000 // 10 seconds timeout
         });
         // console.log("Fetched stations from IRCTC API successfully.", apiResponse.data);
         const responseData = apiResponse.data; // Example: 'var stationName=[...]';
@@ -62,7 +81,7 @@ exports.getTrains = async (req, res) => {
         // 1. First API call to get trains
         const baseUrl = 'https://stagews.irctc.co.in/eticketing/webservices/taenqservices';
         const trainsUrl = `${baseUrl}/tatwnstns/${fromStnCode}/${toStnCode}/${journeyDate}`;
-        const trainsResponse = await axios.get(trainsUrl, auth, { headers: apiHeaders });
+        const trainsResponse = await makeRequestWithRetry(() => axios.get(trainsUrl, auth, { headers: apiHeaders, timeout: 10000 }));
 
         let trains = trainsResponse.data?.trainBtwnStnsList || [];
 
@@ -75,17 +94,17 @@ exports.getTrains = async (req, res) => {
 
         // 2. Prepare all API calls in advance
         const apiCalls = [];
-        
+
         for (const train of trains) {
             train.availabilities = [];
             const { trainNumber, avlClasses, fromStnCode, toStnCode } = train;
-            
+
             for (const jQuota of jQuotaList) {
                 for (const cls of avlClasses) {
                     const fareUrl = `${baseUrl}/avlFareenquiry/${trainNumber}/${journeyDate}/${fromStnCode}/${toStnCode}/${cls}/${jQuota}/${paymentEnqFlag}`;
-                    
+
                     apiCalls.push({
-                        promise: axios.post(fareUrl, bodyContent, auth, { headers: apiHeaders }),
+                        promise: () => axios.post(fareUrl, bodyContent, auth, { headers: apiHeaders, timeout: 10000 }),
                         trainIndex: trains.indexOf(train),
                         quota: jQuota,
                         class: cls
@@ -97,13 +116,13 @@ exports.getTrains = async (req, res) => {
         // 3. Execute API calls in parallel with rate limiting
         const batchSize = 5; // Adjust based on API rate limits
         const results = [];
-        
+
         for (let i = 0; i < apiCalls.length; i += batchSize) {
             const batch = apiCalls.slice(i, i + batchSize);
             const batchResults = await Promise.all(
                 batch.map(async call => {
                     try {
-                        const response = await call.promise;
+                        const response = await makeRequestWithRetry(call.promise);
                         return {
                             ...call,
                             data: response.data,
@@ -119,7 +138,7 @@ exports.getTrains = async (req, res) => {
                 })
             );
             results.push(...batchResults);
-            
+
             // Optional: Add small delay between batches to prevent rate limiting
             if (i + batchSize < apiCalls.length) {
                 await new Promise(resolve => setTimeout(resolve, 100));
@@ -135,7 +154,7 @@ exports.getTrains = async (req, res) => {
             if (!avlDayList) continue;
 
             // Skip processing if train has departed
-            if ((quota === "TQ" || quota === "PT") && 
+            if ((quota === "TQ" || quota === "PT") &&
                 avlDayList[0]?.availablityStatus === "TRAIN DEPARTED") {
                 continue;
             }
@@ -148,7 +167,7 @@ exports.getTrains = async (req, res) => {
                 quota,
                 ...(bkgCfg && { applicableBerthTypes: bkgCfg.applicableBerthTypes })  // Only add if bkgCfg exists
             };
-            
+
             trains[trainIndex].availabilities.push(availabilityData);
         }
 
@@ -156,9 +175,9 @@ exports.getTrains = async (req, res) => {
 
     } catch (error) {
         console.error('Error fetching trains:', error.response?.data || error.message);
-        res.status(500).json({ 
-            message: 'Failed to fetch trains', 
-            error: error.response?.data || error.errorMessage
+        res.status(500).json({
+            message: 'Failed to fetch trains',
+            error: error.response?.data || error.message
         });
     }
 }
@@ -191,7 +210,7 @@ exports.getTrainSchedule = async (req, res) => {
         const { trainNumber } = req.params;
 
         const url = `https://stagews.irctc.co.in/eticketing/webservices/taenqservices/trnscheduleEnq/${trainNumber}`
-        const response = await axios.get(url,auth);
+        const response = await axios.get(url, auth, { headers: apiHeaders });
 
         if (response.data) {
             console.log("148 code response", response.data)    
@@ -211,7 +230,7 @@ exports.getBoardingStations = async (req, res) => {
         const { trainNumber, journeyDate, fromStnCode, toStnCode, jClass } = req.body;
 
         const url = `https://stagews.irctc.co.in/eticketing/webservices/taenqservices/boardingstationenq/${trainNumber}/${journeyDate}/${fromStnCode}/${toStnCode}/${jClass}`
-        const response = await axios.get(url,auth);
+        const response = await axios.get(url, auth, { headers: apiHeaders });
 
         if (response.data?.boardingStationList) {
             console.log("271 code response", response.data)    
@@ -232,7 +251,7 @@ exports.getUsernameFromIRCTC = async (req, res) => {
         const { userName } = req.params;
 
         const url = `https://stagews.irctc.co.in/eticketing/webservices/taprofileservices/getUserStatus/${userName}`
-        const response = await axios.get(url,auth);
+        const response = await axios.get(url, auth, { headers: apiHeaders });
         console.log("271 code response", response.data)
         if (response.data.status ) {
             console.log("271 code response", response.data)    
@@ -256,7 +275,7 @@ exports.getUsernameFromIRCTC = async (req, res) => {
 exports.getCountryList = async (req, res) => {
     try {
         const url = "https://stagews.irctc.co.in/eticketing/webservices/userregistrationservice/country";
-        const response = await axios.get(url, auth);
+        const response = await axios.get(url, auth, { headers: apiHeaders });
         console.log("271 code response", response.data);
         
         if (response.data?.countryList) {
@@ -277,18 +296,18 @@ exports.getIRCTCForgotDetails = async (req, res) => {
         console.log("The body data of forgot 277 ", req.body);
         
         const url = `https://stagews.irctc.co.in/eticketing/webservices/taprofileservices/forgotDetails/${IRCTC_req_type}?userLoginId=${userLoginId}&email=${email}&mobile=${mobile}&otpType=${otpType}&dob=${dob}`
-        const response = await axios.get(url,auth);
+        const response = await axios.get(url, auth, { headers: apiHeaders });
         console.log("data came ", response.data);
         if(response.data.status){
             console.log("284 Success.. ", response.data.status);
-            res.status(200).json({ Success : response.data.status });
+            res.status(200).json({ success : response.data.status });
         }else{
             console.log("Some thing went wrong in forgot IRCTC details ..", response.data);
-            res.status(200).json({ Error : response.data });
+            res.status(200).json({ error : response.data.error });
         }
     }catch(error){
         console.log("Error in fething the Details", error);
-        return res.status(500).json({ message: "Failed to fetch the details" });
+        return res.status(500).json({ error: error.message.error});
     }
 }
 
