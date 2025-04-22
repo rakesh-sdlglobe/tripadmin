@@ -5,92 +5,6 @@ const jwt = require("jsonwebtoken");
 const connection = require('../utils/database'); 
 const { default: axios } = require("axios");
 
-// Signup Controller
-exports.signup = async (req, res) => {
-    const { firstName,middleName, lastName, email, password } = req.body;
-
-    try {
-        // Check if the user already exists
-        connection.query('SELECT * FROM users WHERE email = ?', [email], async (err, results) => {
-            if (err) {
-                console.error('Database query error:', err);
-                return res.status(500).json({ message: 'Server error' });
-            }
-
-            if (results.length > 0) {
-                return res.status(400).json({ message: 'User already exists' });
-            }
-
-            // Hash the password
-            const salt = await bcrypt.genSalt(10);
-            const hashedPassword = await bcrypt.hash(password, salt);
-
-            // Insert new user into the database
-            const query = 'INSERT INTO users (firstName, middleName, lastName, email, password) VALUES (?, ?, ?, ?, ?)';
-            connection.query(query, [firstName,middleName, lastName, email, hashedPassword], (insertErr, insertResults) => {
-                if (insertErr) {
-                    console.error('Database insert error:', insertErr);
-                    return res.status(500).json({ message: 'Server error' });
-                }
-
-                const newUserId = insertResults.insertId;
-
-                // Generate JWT token
-                const token = jwt.sign({ user_id: newUserId }, process.env.SECRET, { expiresIn: '7d' });
-
-                // Return token and user info
-                res.status(201).json({
-                    token,
-                    user: { user_id: newUserId, firstName, middleName, lastName, email },
-                });
-            });
-        });
-    } catch (err) {
-        console.error('Error during signup:', err);
-        res.status(500).json({ message: 'Server error' });
-    }
-};
-
-    // Login Controller
-exports.login = async (req, res) => {
-    const { email, password } = req.body;
-    
-    try {
-        // Find user by email using a raw SQL query
-        connection.query('SELECT * FROM users WHERE email = ?', [email], async (error, results) => {
-            if (error) {
-                return res.status(500).json({ message: 'Please Check the database connections' });
-            }
-
-            // Check if user exists
-            if (results.length === 0) {
-                return res.status(404).json({ message: 'User not found' });
-            }
-
-            const user = results[0]; // Get the user from the query result
-            console.log(user);
-            // Compare the provided password with the stored hashed password
-            const isMatch = await bcrypt.compare(password, user.password);
-            if (!isMatch) {
-                return res.status(400).json({ message: 'Invalid credentials' });
-            }
-    
-            // Generate JWT token
-            const token = jwt.sign({ user_id: user.user_id }, process.env.SECRET, { expiresIn: '7d' });
-
-            // Return the token and user information
-            res.json({
-                token,
-                user: { user_id: user.user_id, firstName: user.firstName,lastName: user.lastName, email: user.email },
-                // expiresIn: 3600
-            });
-        });
-    } catch (err) {
-        res.status(500).json({ message: 'Server error' });
-    }
-};
-
-
 
 exports.googleAuth = async (req, res) => {
     const googleToken = req.headers.authorization?.split(' ')[1];
@@ -353,3 +267,92 @@ exports.deleteUser = async (req, res) => {
         res.status(500).json({ message: 'Server error' });
     }
 };
+
+
+
+// Signup Controller
+// exports.signup = async (req, res) => {
+//     const { firstName,middleName, lastName, email, password } = req.body;
+
+//     try {
+//         // Check if the user already exists
+//         connection.query('SELECT * FROM users WHERE email = ?', [email], async (err, results) => {
+//             if (err) {
+//                 console.error('Database query error:', err);
+//                 return res.status(500).json({ message: 'Server error' });
+//             }
+
+//             if (results.length > 0) {
+//                 return res.status(400).json({ message: 'User already exists' });
+//             }
+
+//             // Hash the password
+//             const salt = await bcrypt.genSalt(10);
+//             const hashedPassword = await bcrypt.hash(password, salt);
+
+//             // Insert new user into the database
+//             const query = 'INSERT INTO users (firstName, middleName, lastName, email, password) VALUES (?, ?, ?, ?, ?)';
+//             connection.query(query, [firstName,middleName, lastName, email, hashedPassword], (insertErr, insertResults) => {
+//                 if (insertErr) {
+//                     console.error('Database insert error:', insertErr);
+//                     return res.status(500).json({ message: 'Server error' });
+//                 }
+
+//                 const newUserId = insertResults.insertId;
+
+//                 // Generate JWT token
+//                 const token = jwt.sign({ user_id: newUserId }, process.env.SECRET, { expiresIn: '7d' });
+
+//                 // Return token and user info
+//                 res.status(201).json({
+//                     token,
+//                     user: { user_id: newUserId, firstName, middleName, lastName, email },
+//                 });
+//             });
+//         });
+//     } catch (err) {
+//         console.error('Error during signup:', err);
+//         res.status(500).json({ message: 'Server error' });
+//     }
+// };
+
+//     // Login Controller
+// exports.login = async (req, res) => {
+//     const { email, password } = req.body;
+    
+//     try {
+//         // Find user by email using a raw SQL query
+//         connection.query('SELECT * FROM users WHERE email = ?', [email], async (error, results) => {
+//             if (error) {
+//                 return res.status(500).json({ message: 'Please Check the database connections' });
+//             }
+
+//             // Check if user exists
+//             if (results.length === 0) {
+//                 return res.status(404).json({ message: 'User not found' });
+//             }
+
+//             const user = results[0]; // Get the user from the query result
+//             console.log(user);
+//             // Compare the provided password with the stored hashed password
+//             const isMatch = await bcrypt.compare(password, user.password);
+//             if (!isMatch) {
+//                 return res.status(400).json({ message: 'Invalid credentials' });
+//             }
+    
+//             // Generate JWT token
+//             const token = jwt.sign({ user_id: user.user_id }, process.env.SECRET, { expiresIn: '7d' });
+
+//             // Return the token and user information
+//             res.json({
+//                 token,
+//                 user: { user_id: user.user_id, firstName: user.firstName,lastName: user.lastName, email: user.email },
+//                 // expiresIn: 3600
+//             });
+//         });
+//     } catch (err) {
+    //         res.status(500).json({ message: 'Server error' });
+    //     }
+    // };
+    
+    
