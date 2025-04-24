@@ -4,6 +4,7 @@ const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
 const connection = require('../utils/database'); 
 const { default: axios } = require("axios");
+const { generateAccessToken } = require('./genTokens');
 
 
 exports.googleAuth = async (req, res) => {
@@ -77,19 +78,21 @@ exports.googleAuth = async (req, res) => {
 
                             console.log('User info updated:', results[0]);
                             // Generate JWT token
-                            const jwtToken = jwt.sign(
-                                {
-                                    user_id: results[0].user_id,
-                                    email,
-                                },
-                                process.env.SECRET, // Replace with a secure secret key
-                                { expiresIn: '7d' }
-                            );
+                            // const jwtToken = jwt.sign(
+                            //     {
+                            //         id: results[0].user_id,
+                            //         email,
+                            //     },
+                            //     process.env.SECRET, // Replace with a secure secret key
+                            //     { expiresIn: '7d' }
+                            // );
+
+                            const user = { id : results[0].user_id, email };
+                            const accessToken = generateAccessToken(user);
 
                             return res.status(200).json({
-                                token: jwtToken,
+                                token: accessToken,
                                 user: {
-                                    user_id: results[0].user_id,
                                     ...userData,
                                 },
                             });
@@ -111,19 +114,23 @@ exports.googleAuth = async (req, res) => {
                             }
 
                             // Generate JWT token
-                            const jwtToken = jwt.sign(
-                                {
-                                    user_id: results.insertId,
-                                    email,
-                                },
-                                process.env.SECRET, 
-                                { expiresIn: '7d' }
-                            );
+                            // const jwtToken = jwt.sign(
+                            //     {
+                            //         user_id: results.insertId,
+                            //         email,
+                            //     },
+                            //     process.env.SECRET, 
+                            //     { expiresIn: '7d' }
+                            // );
+
+                            const user = { id : results.insertId, email, firstName : results[0].firstName };
+                            const accessToken = generateAccessToken(user);
 
                             return res.status(201).json({
-                                token: jwtToken,
+                                token: accessToken,
+                                
                                 user: {
-                                    user_id: results.insertId,
+                                    // user_id: results.insertId,
                                     ...userData,
                                 },
                             });

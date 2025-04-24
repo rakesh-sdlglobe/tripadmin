@@ -40,17 +40,16 @@ exports.sendEmailOtp = (req, res) => {
   transporter.sendMail(mailOptions, (mailErr, info) => {
     if (mailErr) {
       console.error("Error sending email:", mailErr);
-      return res.status(500).send("Error sending email: " + mailErr.message);
+      return res.status(500).send({ "error" : "Error sending email: " + mailErr.message });
     }
-    res.status(200).send("OTP sent to your email");
+    res.status(200).send({ "success" : "OTP sent to your email"});
   });
 };
 
 exports.verifyEmailOtp = (req, res) => {
+  
   const { email, otp } = req.body;
-
   if (!email || !otp) return res.status(400).send("Email and OTP are required");
-
   const storedOtpData = otpStorage[email];
 
   if (!storedOtpData) {
@@ -73,8 +72,8 @@ exports.verifyEmailOtp = (req, res) => {
 
   // Insert user into DB (or ignore if exists)
   const insertUserQuery = `
-    INSERT INTO users (email, firstName, isEmailVerified)
-    VALUES (?, 'Traveller', 1)
+    INSERT INTO users (email, isEmailVerified)
+    VALUES (?,  1)
     ON DUPLICATE KEY UPDATE isEmailVerified = 1
   `;
 
@@ -85,20 +84,26 @@ exports.verifyEmailOtp = (req, res) => {
     }
 
     // Get user ID
-    db.query("SELECT user_id FROM users WHERE email = ?", [email], (err2, userResults) => {
+    db.query("SELECT user_id, email, firstName FROM users WHERE email = ?", [email], (err2, userResults) => {
       if (err2 || !userResults.length) {
         console.error("Error fetching user ID:", err2);
         return res.status(500).send("Error retrieving user");
       }
 
-      const user = { id: userResults[0].user_id, email };
+      console.log("User ID:", userResults[0].firstName);
+      
+      const user = { id: userResults[0].user_id, email : userResults[0].email, firstName : userResults[0].firstName };
 
       // Generate tokens
       const accessToken = generateAccessToken(user);
       // const refreshToken = generateRefreshToken(user);
+      console.log("Access Token:", accessToken);
+      console.log("user from 99 email, ", user);
+      
 
       res.status(200).json({
-        user: email,
+        email,
+        firstName: user.firstName,
         token: accessToken,
       });
       
