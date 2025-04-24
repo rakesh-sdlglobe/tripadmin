@@ -3,7 +3,7 @@ const router = express.Router();
 const userController = require('../controllers/user')
 const isAuth = require("../middleware/isAuth")
 
-router.get('/getUsers', userController.getRecentUsers);
+router.get('/getUsers',isAuth.token, userController.getRecentUsers);
 router.get('/userProfile', isAuth.token, userController.getUserProfile)
 router.post('/editProfile', isAuth.token, userController.editUserProfile)
 router.get('/myBookings', isAuth.token, userController.myBookings)

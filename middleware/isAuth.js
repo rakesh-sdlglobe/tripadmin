@@ -16,14 +16,14 @@ exports.token = (req, res, next) => {
   try {
     const decodedToken = jwt.verify(token, process.env.SECRET);
     console.log("from isAuth.js ", decodedToken);
-    req.user = decodedToken.user_id; 
+    req.user = decodedToken.id; 
     console.log("from isAuth.js ", req.user);
     next(); 
   } catch (err) {
     console.error('JWT verification error:', err);
 
     if (err.name === 'TokenExpiredError') {
-      return res.status(401).json({ message: 'Token expired. Please log in again.' });
+      return res.status(401).json({ message: 'Token expired' });
     }
 
     return res.status(401).json({ message: 'Invalid token' });

@@ -7,7 +7,7 @@ const path = require('path');
 exports.getRecentUsers = async (req, res) => {
   try {
     const query = `
-      SELECT name, email 
+      SELECT firstName, email 
       FROM users
       ORDER BY createdAt DESC 
       LIMIT 5;
