@@ -18,6 +18,9 @@ const allowedOrigins = [
   'https://stagews.irctc.co.in',
   'https://seemytrip.vercel.app',
   'https://tripadmin.onrender.com',
+  'https://www.seemytrip.com',
+  'https://tripadmin.seemytrip.com',
+  'https://seemytrip.com',
 ];
 
 app.use(cors({
