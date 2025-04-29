@@ -76,7 +76,7 @@ exports.googleAuth = async (req, res) => {
                                 return res.status(500).json({ message: 'Failed to update user' });
                             }
 
-                            console.log('User info updated:', results[0]);
+                            // console.log('User info updated:', results[0]);
                             // Generate JWT token
                             // const jwtToken = jwt.sign(
                             //     {
@@ -86,7 +86,7 @@ exports.googleAuth = async (req, res) => {
                             //     process.env.SECRET, // Replace with a secure secret key
                             //     { expiresIn: '7d' }
                             // );
-
+                            // console.log('User info updated:', results[0]);  
                             const user = { id : results[0].user_id, email };
                             const accessToken = generateAccessToken(user);
 
@@ -122,8 +122,9 @@ exports.googleAuth = async (req, res) => {
                             //     process.env.SECRET, 
                             //     { expiresIn: '7d' }
                             // );
-
-                            const user = { id : results.insertId, email, firstName : results[0].firstName };
+                            console.log('User inserted:', results);
+                            
+                            const user = { id : results.insertId, email };
                             const accessToken = generateAccessToken(user);
 
                             return res.status(201).json({
