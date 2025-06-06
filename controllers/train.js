@@ -45,14 +45,18 @@ exports.getMessage = (req, res) => {
 
 exports.getStation = async (req, res) => {
     try {
-        const apiResponse = await axios.get('https://www.irctc.co.in/eticketing/StationListServlet.js',{
-            headers: {
-                'Content-Type': 'application/json',
-                'Accept': 'application/json',
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
-            },
-            // timeout: 10000 // 10 seconds timeout
-        });
+        const apiResponse = await axios.get('https://www.irctc.co.in/eticketing/StationListServlet.js', {
+        headers: {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)',
+        
+            'Accept-Language': 'en-US,en;q=0.5',
+            'Connection': 'keep-alive',
+            'Referer': 'https://www.irctc.co.in/',
+        },
+        timeout: 15000
+        }
+
+    );
         // console.log("Fetched stations from IRCTC API successfully.", apiResponse.data);
         const responseData = apiResponse.data; // Example: 'var stationName=[...]';
         

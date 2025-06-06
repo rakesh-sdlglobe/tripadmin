@@ -8,6 +8,7 @@ const trainRoutes = require('./routes/trainsRoute');
 const emailRoutes = require('./routes/emailRoutes');
 const passwordRoutes = require('./routes/passwordRoutes');
 const otpRoutes = require('./routes/otpRoutes');
+const hotelRoutes = require('./routes/hotelsRoute');
 
 const app = express();
 
@@ -47,6 +48,7 @@ app.use('/api', authRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/booking',revenueRoutes);
 app.use('/api/trains',trainRoutes);
+app.use('/api/hotels', hotelRoutes);
 app.use('/api', emailRoutes);
 app.use('/api/password', passwordRoutes);
 app.use('/api/otp', otpRoutes);
