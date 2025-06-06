@@ -150,15 +150,17 @@ exports.googleAuth = async (req, res) => {
 exports.googleUserData = (req, res) => {
     const userData = req.body;
     console.log('Received User Data:', JSON.stringify(userData));
-
+   
     // Check if required fields exist
     if (!userData || !userData.email) {
         return res.status(400).json({ message: 'User email is required' });
     }
 
     // Extract user details
-    const { name, email, isEmailVerified } = userData;
-    const [firstName, lastName = ''] = name.split(' '); // Handles missing last name
+    const { email, isEmailVerified, name } = userData;
+    const nameParts = name.split(" ");
+    const firstName = nameParts[0];
+    const lastName = nameParts.length > 1 ? nameParts[nameParts.length - 1] : "";
 
     // Check if the user exists in the database
     connection.query('SELECT * FROM users WHERE email = ?', [email], (error, results) => {
@@ -168,11 +170,11 @@ exports.googleUserData = (req, res) => {
         }
 
         const userDataToSave = {
-            name: firstName,
-            lastname: lastName,
+            firstName: firstName,
+            middleName: '',
+            lastName: lastName,
             email,
             role: 'user',
-            password: '', // Empty password
             isEmailVerified: isEmailVerified ? 1 : 0, // Convert to 1 or 0 for consistency
         };
 
@@ -181,25 +183,31 @@ exports.googleUserData = (req, res) => {
         if (results.length > 0) {
             // User exists, update their information
             const updateQuery = `
-                UPDATE users
-                SET name = ?, lastname = ?, isEmailVerified = ?, updatedAt = NOW()
-                WHERE email = ?
-            `;
-            connection.query(
-                updateQuery,
-                [firstName, lastName, userDataToSave.isEmailVerified, email],
+            UPDATE users 
+            SET firstName = ?, middleName = ?, lastName = ?, isEmailVerified = ?, updatedAt = NOW()
+            WHERE email = ?
+        `;
+        connection.query(
+            updateQuery,
+            [userDataToSave.firstName, userDataToSave.middleName, userDataToSave.lastName, userDataToSave.isEmailVerified, email],
                 (updateError, updateResults) => {
                     if (updateError) {
                         console.error('Error updating user:', updateError);
                         return res.status(500).json({ message: 'Failed to update user' });
                     }
+                    
+                     const user = { id : results[0].user_id, email };
+                     const accessToken = generateAccessToken(user);
 
+                    console.log("Access Token: ", accessToken);
+                    // console.log('User info updated:', results[0]);
                     console.log('User updated:', updateResults);
                     return res.status(200).json({
                         message: 'User updated successfully',
+                        token: accessToken,
                         user: {
-                            id: results[0].id,
-                            ...userDataToSave,
+                            // id: results[0].id,
+                            ...results[0],
                             role: results[0].role,
                         },
                     });
@@ -208,22 +216,23 @@ exports.googleUserData = (req, res) => {
         } else {
             // User does not exist, insert a new record
             const insertQuery = `
-                INSERT INTO users (name, lastname, email, role, password, isEmailVerified, createdAt, updatedAt)
-                VALUES (?, ?, ?, ?, ?, ?, NOW(), NOW())
-            `;
-            connection.query(
-                insertQuery,
-                [firstName, lastName, email, userDataToSave.role, userDataToSave.password, userDataToSave.isEmailVerified],
+            INSERT INTO users (firstName, middleName, lastName, email, password, isEmailVerified, createdAt, updatedAt)
+            VALUES (?, ?, ?, ?, ?, ?, NOW(), NOW())
+        `;
+        connection.query(
+            insertQuery,
+            [userDataToSave.firstName, userDataToSave.middleName, userDataToSave.lastName, email, '', userDataToSave.isEmailVerified],
                 (insertError, insertResults) => {
                     if (insertError) {
-                        console.error('Error inserting user:', insertError);
+                        console.error('Error inserting user:', insertError.message);
                         return res.status(500).json({ message: 'Failed to create user' });
                     }
 
                     console.log('User inserted:', insertResults);
                     return res.status(201).json({
                         message: 'User created successfully',
-                        user: {
+                        generateAccessToken,
+                        user: { 
                             id: insertResults.insertId,
                             ...userDataToSave,
                         },
