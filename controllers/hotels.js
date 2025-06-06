@@ -15,12 +15,14 @@ const credentials =  {
 }
 
 exports.getHotelCities = async (req, res) => {
+
+    const { input } = req.body;
     try {
         const response = await axios.post(`${base_url}/SIGNIX/B2B/StaticData/AC`, {
             "Credential": credentials,  
-            "AcType": "City",
-            "SearchText": req.SearchText || "",
-            "AllData": false
+            "AcType": input ? "CityHotel" : "City", 
+            "SearchText":input || "",
+            "AllData": input ? true : false,
         });
 
         res.status(200).json(response.data);
@@ -30,5 +32,22 @@ exports.getHotelCities = async (req, res) => {
     }
 };
 
+exports.getHotels = async (req, res) => {
+    const { cityId, checkInDate, checkOutDate, Rooms } = req.body;
 
+    try {
+        const response = await axios.post(`${base_url}/SIGNIX/B2B/Hotel/CacheSearch`, {
+            "Credential": credentials,
+            "CityId": cityId,
+            "CheckInDate": moment(checkInDate).format('YYYY-MM-DD'),
+            "CheckOutDate": moment(checkOutDate).format('YYYY-MM-DD'),
+            "Rooms": Rooms
+        });
+
+        res.status(200).json(response.data);
+    } catch (error) {
+        console.error('Error fetching hotels:', error.message);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+}
     
