@@ -46,7 +46,7 @@ exports.getHotelsList = async (req, res) => {
             "CheckInDate": checkInDate,
             "CheckOutDate": checkOutDate,
             "Currency": "INR",
-            "showDetail": false,
+            "showDetail": true,
             "Rooms": Rooms
         });
         console.log("Response:", response.data);
