@@ -53,7 +53,34 @@ exports.getHotelsList = async (req, res) => {
         res.status(200).json(response.data);
     } catch (error) {
         console.error('Error fetching hotels:', error.message);
-        res.status(500).json({ error: 'Internal server error' });
+        res.status(500).json({ error: error.message });
     }
 }
     
+// Get Hotel Details
+exports.getHotelDetails = async (req, res) => {
+
+}
+
+
+// get hotel pics
+exports.getHotelImages = async (req, res) => {
+
+    const { HotelProviderSearchId } = req.body;
+    console.log('Hotels provider id ', HotelProviderSearchId)
+
+    try{
+        const response = await axios.post(`${base_url}/SIGNIX/B2B/Hotel/Media`,{ 
+            HotelProviderSearchId,
+            "Credential" : credentials
+        });
+        console.log("====> Response from the get hotels pics are: ", response.data);
+        res.status(200).json(response.data);
+
+    }catch(error){
+        console.log("Error came while fetching the hotel pics ", error.message);
+        res.status(500).json({ "error" : error.message });
+        
+    }
+
+}
