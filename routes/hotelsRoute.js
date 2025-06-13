@@ -6,5 +6,6 @@ const isAuth = require("../middleware/isAuth")
 
 router.post('/getHotelCities', hotelController.getHotelCities);
 router.post('/getHotelsList', hotelController.getHotelsList);
+router.post('/getHotelImages', hotelController.getHotelImages);
 
 module.exports = router;
