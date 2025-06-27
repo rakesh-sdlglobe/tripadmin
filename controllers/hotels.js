@@ -14,13 +14,13 @@ const credentials = {
     "IpAddress": "8.8.8.8"
 }
 
-exports.getHotelCities = async (req, res) => {
+exports.getHotelCities = async (req, res) => {  
 
     const { input } = req.body;
     try {
         const response = await axios.post(`${base_url}/SIGNIX/B2B/StaticData/AC`, {
             "Credential": credentials,
-            "AcType": input ? "CityHotel" : "City",
+            "AcType": "CityHotel" ,
             "SearchText": input || "",
             "AllData": input ? true : false,
         });
@@ -33,21 +33,53 @@ exports.getHotelCities = async (req, res) => {
 };
 
 exports.getHotelsList = async (req, res) => {
-    const { cityId, checkInDate, checkOutDate, Rooms } = req.body;
+    const { cityId, checkInDate, checkOutDate, Rooms, PageNo, SessionID, Filter, Sort } = req.body;
 
     if (!cityId || !checkInDate || !checkOutDate || !Rooms) {
         return res.status(400).json({ error: 'Missing required fields' });
     }
+    /* Filter data {
+                "MinPrice": 0.0,
+                "MaxPrice": 999999999.0,
+                "MealPlans": null,
+                "StarRatings": "",
+                "Hotels": null,
+                "Favorite": null
+            }
+    
+    */
+
+            /* SortCriteria data {
+                "SortBy": "StarRating",
+                "SortOrder": "Desc"
+            }
+    
+    */
 
     try {
+
         const response = await axios.post(`${base_url}/SIGNIX/B2B/Hotel/CacheSearch`, {
             "Credential": credentials,
-            "CityId": cityId,
             "CheckInDate": checkInDate,
             "CheckOutDate": checkOutDate,
             "Currency": "INR",
             "showDetail": true,
-            "Rooms": Rooms
+            "Rooms": Rooms,
+            "CityId": cityId,
+            "PageNo": PageNo,
+            "PageSize": 10,
+            "HotelID": null,
+            "SessionID": SessionID,
+            "TravellerNationality": "IN",
+            "CheckInDate":checkInDate,
+            "CheckOutDate": checkOutDate,
+            "Currency": "INR",
+            "Rooms": Rooms,
+            "ShowDetail": true,
+            "Filter": Filter,
+            "RoomCriteria": "A",
+            "SortCriteria": Sort || { "SortBy": "StarRating", "SortOrder": "Desc" },
+            "SearchProviders": null
         });
         console.log("Response:", response.data);
         res.status(200).json(response.data);
