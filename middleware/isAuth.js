@@ -16,7 +16,7 @@ exports.token = (req, res, next) => {
   try {
     const decodedToken = jwt.verify(token, process.env.SECRET);
     console.log("from isAuth.js ", decodedToken);
-    req.user = decodedToken.id; 
+    req.user = decodedToken;
     console.log("from isAuth.js ", req.user);
     next(); 
   } catch (err) {

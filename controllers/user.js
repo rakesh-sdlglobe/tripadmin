@@ -20,27 +20,25 @@ exports.getRecentUsers = async (req, res) => {
       }
       res.json(results);
     });
-  } catch (err) {
+  } catch (err) {   
     res.status(500).json({ message: "Server error" });
   }
 };
 
 // Get User Profile
-
 exports.getUserProfile = async (req, res) => {
   try {
-    // Get email from decoded JWT token
-    const user_id = req.user;
-    console.log(req.user);
+    const email = req.user.email;
     
-
+    console.log("32 email ", email);
+    
     const query = `
-      SELECT userName, firstName, middleName, lastName, email, mobile, gender, dob, isEmailVerified, isMobileVerified
+      SELECT user_id, userName, firstName, middleName, lastName, email, mobile, gender, dob, isEmailVerified, isMobileVerified, martialStatus as maritalStatus
       FROM users 
-      WHERE user_id = ?;
+      WHERE email = ?;
     `;
 
-    connection.query(query, [user_id], (err, results) => {
+    connection.query(query, [email], (err, results) => {
       if (err) {
         console.error('Error fetching user profile:', err);
         return res.status(500).json({ message: "Internal server error" });
@@ -61,25 +59,69 @@ exports.getUserProfile = async (req, res) => {
 };
 // Edit User Profile
 exports.editUserProfile = async (req, res) => {
+  console.log(res);
+  
   console.log("59 req data ", req.body);
   try {
-    let { firstName, middleName, lastName, mobile, dob, gender, email } = req.body;
+    let { firstName, middleName, lastName, mobile, dob, gender, email, maritalStatus } = req.body;
 
-    const updateQuery = `
-      UPDATE users 
-      SET firstName = ?, middleName = ?, lastName = ?, mobile = ?, dob = ?, gender = ?, email = ? 
-      WHERE user_id = ?;
-    `;
+    // Switch for marital status: 's' for single, 'm' for married
+    let maritalStatusValue;
+    switch (maritalStatus) {
+      case 's':
+        maritalStatusValue = 'single';
+        break;
+      case 'm':
+        maritalStatusValue = 'married';
+        break;
+      default:
+        maritalStatusValue = maritalStatus; // Keep original value if not 's' or 'm'
+    }
+
+    // Switch for gender: 'Male' -> 'M', 'Female' -> 'F'
+    let genderValue;
+    switch (gender?.toLowerCase()) {
+      case 'male':
+        genderValue = 'M';
+        break;
+      case 'female':
+        genderValue = 'F';
+        break;
+      default:
+        genderValue = gender; // Keep original value if not 'Male' or 'Female'
+    }
+
+    console.log("60 maritalStatus ", maritalStatusValue);
+    console.log("60 gender ", genderValue);
+    
+    // Check if maritalStatus is provided, if not, exclude it from the update
+    let updateQuery, queryParams;
+    
+    if (maritalStatusValue !== undefined && maritalStatusValue !== null && maritalStatusValue !== '') {
+      updateQuery = `
+        UPDATE users 
+        SET firstName = ?, middleName = ?, lastName = ?, mobile = ?, dob = ?, gender = ?, email = ?, martialStatus = ? 
+        WHERE user_id = ?;
+      `;
+      queryParams = [firstName, middleName, lastName, mobile, dob, genderValue, email, maritalStatusValue, req.user];
+    } else {
+      updateQuery = `
+        UPDATE users 
+        SET firstName = ?, middleName = ?, lastName = ?, mobile = ?, dob = ?, gender = ?, email = ? 
+        WHERE user_id = ?;
+      `;
+      queryParams = [firstName, middleName, lastName, mobile, dob, genderValue, email, req.user];
+    }
 
     // Update the user profile
-    connection.query(updateQuery, [firstName,middleName, lastName, mobile, dob, gender, email, req.user], (err, result) => {
+    connection.query(updateQuery, queryParams, (err, result) => {
       if (err) {
         console.error('Error updating user profile:', err);
         return res.status(500).json({ message: "Internal server error" });
       }
 
       // Fetch the updated user profile
-      const fetchQuery = `SELECT firstName, middleName, lastName, mobile, gender, email, isEmailVerified, isMobileVerified, DATE_FORMAT(dob, '%Y-%m-%d') AS dob FROM users WHERE user_id = ?;`;
+      const fetchQuery = `SELECT firstName, middleName, lastName, email, mobile, gender, dob, isEmailVerified, isMobileVerified, martialStatus as maritalStatus, DATE_FORMAT(dob, '%Y-%m-%d') AS dob FROM users WHERE user_id = ?;`;
       connection.query(fetchQuery, [req.user], (err, rows) => {
         if (err) {
           console.error('Error fetching updated user profile:', err);
@@ -338,51 +380,17 @@ exports.removeTraveller = async (req, res) => {
 
 // API Function
 exports.imageUpload = async (req, res) => {
-  console.log("SS came to 216 imageupload")
   try {
-    // Ensure the uploads directory exists
-    const uploadsDir = path.join(__dirname, '../uploads');
-    if (!fs.existsSync(uploadsDir)) {
-      fs.mkdirSync(uploadsDir); // Create the directory if it doesn't exist
+    const userId = req.params.id;
+    if (!req.file || !req.file.path) {
+      return res.status(400).json({ message: 'No file uploaded' });
     }
-
-    // Multer configuration
-    const storage = multer.diskStorage({
-      destination: (req, file, cb) => {
-        cb(null, uploadsDir); // Save files to the 'uploads/' directory
-      },
-      filename: (req, file, cb) => {
-        const uniqueName = `${Date.now()}-${file.originalname}`;
-        cb(null, uniqueName); // Unique filename to avoid conflicts
-      },
-    });
-
-    const upload = multer({ storage }).single('file'); // Handle single file upload
-
-    // Handle the file upload
-    upload(req, res, (err) => {
-      if (err) {
-        return res.status(500).json({ message: 'Error uploading file', error: err.message });
-      }
-
-      const filePath = req.file.path;
-      const userId = req.user; 
-
-      // Insert file path into the database
-      const query = 'update users set  filepath = ? where id = ?';
-      connection.query(query, [filePath, userId ], (error, results) => {
-        if (error) {
-          return res.status(500).json({ message: 'Error saving file path to database', error: error.message });
-        }
-
-        res.status(200).json({
-          message: 'File uploaded and saved successfully',
-          filePath,
-          databaseResult: results,
-        });
-      });
-    });
+    const imageUrl = req.file.path; // Cloudinary URL
+    // Save to DB using promise wrapper
+    await connection.promise().query('UPDATE users SET img_url = ? WHERE user_id = ?', [imageUrl, userId]);
+    res.status(200).json({ img_url: imageUrl, message: 'Image uploaded successfully' });
   } catch (error) {
+    console.error('Image upload error:', error);
     res.status(500).json({ message: 'Server error', error: error.message });
   }
 };

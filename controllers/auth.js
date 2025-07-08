@@ -52,16 +52,17 @@ exports.googleAuth = async (req, res) => {
                     return res.status(500).json({ message: 'Database error' });
                 }
 
-                const userData = {
-                    firstName: firstName,
-                    middleName: middleName,
-                    lastName: lastName,
-                    email,
-                    isEmailVerified: isEmailVerified ? 1 : 0,
-                };
-
                 if (results.length > 0) {
                     // User exists, update their information
+                    const userData = {
+                        firstName: firstName,
+                        middleName: middleName,
+                        lastName: lastName,
+                        email,
+                        isEmailVerified: isEmailVerified ? 1 : 0,
+                    };
+                    const user1 = { user_id: results[0].user_id, email };
+
                     const updateQuery = `
                         UPDATE users 
                         SET firstName = ?, middleName = ?, lastName = ?, isEmailVerified = ?, updatedAt = NOW()
@@ -76,25 +77,15 @@ exports.googleAuth = async (req, res) => {
                                 return res.status(500).json({ message: 'Failed to update user' });
                             }
 
-                            // console.log('User info updated:', results[0]);
-                            // Generate JWT token
-                            // const jwtToken = jwt.sign(
-                            //     {
-                            //         id: results[0].user_id,
-                            //         email,
-                            //     },
-                            //     process.env.SECRET, // Replace with a secure secret key
-                            //     { expiresIn: '7d' }
-                            // );
-                            // console.log('User info updated:', results[0]);  
-                            const user = { id : results[0].user_id, email };
-                            const accessToken = generateAccessToken(user);
+                            const user1 = { user_id: results[0].user_id, email };
+                            const accessToken = generateAccessToken(user1);
 
                             return res.status(200).json({
                                 token: accessToken,
                                 user: {
                                     ...userData,
                                 },
+                                user1: user1,
                             });
                         }
                     );
@@ -107,33 +98,29 @@ exports.googleAuth = async (req, res) => {
                     connection.query(
                         insertQuery,
                         [firstName, middleName, lastName, email, '', isEmailVerified ? 1 : 0],
-                        (insertError, results) => {
+                        (insertError, insertResults) => {
                             if (insertError) {
                                 console.error('Error inserting user:', insertError);
                                 return res.status(500).json({ message: 'Failed to create user' });
                             }
 
-                            // Generate JWT token
-                            // const jwtToken = jwt.sign(
-                            //     {
-                            //         user_id: results.insertId,
-                            //         email,
-                            //     },
-                            //     process.env.SECRET, 
-                            //     { expiresIn: '7d' }
-                            // );
-                            console.log('User inserted:', results);
-                            
-                            const user = { id : results.insertId, email };
-                            const accessToken = generateAccessToken(user);
+                            const userData = {
+                                user_id: insertResults.insertId,
+                                firstName: firstName,
+                                middleName: middleName,
+                                lastName: lastName,
+                                email,
+                                isEmailVerified: isEmailVerified ? 1 : 0,
+                            };
+                            const user1 = { user_id: insertResults.insertId, email };
+                            const accessToken = generateAccessToken(user1);
 
                             return res.status(201).json({
                                 token: accessToken,
-                                
                                 user: {
-                                    // user_id: results.insertId,
                                     ...userData,
                                 },
+                                user1: user1,
                             });
                         }
                     );
@@ -196,7 +183,7 @@ exports.googleUserData = (req, res) => {
                         return res.status(500).json({ message: 'Failed to update user' });
                     }
                     
-                     const user = { id : results[0].user_id, email };
+                     const user = { user_id: results[0].user_id, email };
                      const accessToken = generateAccessToken(user);
 
                     console.log("Access Token: ", accessToken);
@@ -233,7 +220,7 @@ exports.googleUserData = (req, res) => {
                         message: 'User created successfully',
                         generateAccessToken,
                         user: { 
-                            id: insertResults.insertId,
+                            user_id: insertResults.insertId,
                             ...userDataToSave,
                         },
                     });
