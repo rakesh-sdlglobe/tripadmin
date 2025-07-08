@@ -17,3 +17,4 @@ router.get('/auth/google', authController.googleAuth);
 router.post('/auth/googleUserData', authController.googleUserData);
 
 module.exports = router;
+ 
