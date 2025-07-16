@@ -74,7 +74,7 @@ exports.getHotelsList = async (req, res) => {
             "CheckInDate":checkInDate,
             "CheckOutDate": checkOutDate,
             "Currency": "INR",
-            "Rooms": Rooms,
+            //"Rooms": Rooms,
             "ShowDetail": true,
             "Filter": Filter,
             "RoomCriteria": "A",
