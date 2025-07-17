@@ -204,21 +204,21 @@ exports.getTrainsAvailableFareEnquiry = async (req, res) => {
         "reservationChoice": "99",
         "moreThanOneDay": "true"
     }
-    console.log(trainNo, journeyDate, fromStnCode, toStnCode, jClass, jQuota, paymentEnqFlag, " -> for the fare enquiry");
+    // console.log(trainNo, journeyDate, fromStnCode, toStnCode, jClass, jQuota, paymentEnqFlag, " -> for the fare enquiry");
     try{
         const url = `https://stagews.irctc.co.in/eticketing/webservices/taenqservices/avlFareenquiry/${trainNo}/${journeyDate}/${fromStnCode}/${toStnCode}/${jClass}/${jQuota}/${paymentEnqFlag}`;
         const response = await axios.post(url,bodyContent,auth, { headers: apiHeaders });
-        console.log(response.data);
+        // console.log(response.data);
         res.json(response.data);
     }catch(error){
-        console.error('Error fetching trains:', error.response ? error.response.data : error.message);
+        // console.error('Error fetching trains:', error.response ? error.response.data : error.message);
         res.status(500).json({ message: 'Failed to fetch trains fare details', error: error.response ? error.response.data : error.message });
     }
 }
 
 
 exports.getTrainSchedule = async (req, res) => {
-    console.log("141 came to call the train schedule api.")
+    // console.log("141 came to call the train schedule api.")
     try {
         const { trainNumber } = req.params;
 
@@ -226,7 +226,7 @@ exports.getTrainSchedule = async (req, res) => {
         const response = await axios.get(url, auth, { headers: apiHeaders });
 
         if (response.data) {
-            console.log("148 code response", response.data)    
+            // console.log("148 code response", response.data)    
             res.status(200).json(response.data);
         } else {
         res.status(404).json({ message: "Train data not found" });
@@ -238,7 +238,7 @@ exports.getTrainSchedule = async (req, res) => {
 };
 
 exports.getBoardingStations = async (req, res) => {
-    console.log("263 came to call the boarding stations api.",req.body)
+    // console.log("263 came to call the boarding stations api.",req.body)
     try {
         const { trainNumber, journeyDate, fromStnCode, toStnCode, jClass } = req.body;
 
@@ -246,31 +246,31 @@ exports.getBoardingStations = async (req, res) => {
         const response = await axios.get(url, auth, { headers: apiHeaders });
 
         if (response.data?.boardingStationList) {
-            console.log("271 code response", response.data)    
+            // console.log("271 code response", response.data)    
             res.status(200).json(response.data.boardingStationList);
         } else {
         res.status(404).json({ message: "Boarding Stations not found" });
         }
     } catch (error) {
-        console.error("Error fetching train boarding stations", error.message);
+        // console.error("Error fetching train boarding stations", error.message);
         res.status(500).json({ message: "Failed while fetching train boarding stations" });
     }
 };
 
 
 exports.getUsernameFromIRCTC = async (req, res) => {
-    console.log("283 came to call the boarding stations api.",req.params)
+    // console.log("283 came to call the boarding stations api.",req.params)
     try {
         const { userName } = req.params;
 
         const url = `https://stagews.irctc.co.in/eticketing/webservices/taprofileservices/getUserStatus/${userName}`
         const response = await axios.get(url, auth, { headers: apiHeaders });
-        console.log("271 code response", response.data)
+        // console.log("271 code response", response.data)
         if (response.data.status ) {
-            console.log("271 code response", response.data)    
+            // console.log("271 code response", response.data)    
             connection.query(`update users set userName = ? where user_id = ?`, [response.data.userId, req.user], (error, results) => {
                 if (error) {
-                    console.error("Error updating user details:", error);
+                    // console.error("Error updating user details:", error);
                     return res.status(500).json({ error: "Internal Server Error" });
                 }
                 res.status(200).json({ success : response.data.userId });
@@ -280,7 +280,7 @@ exports.getUsernameFromIRCTC = async (req, res) => {
         res.status(200).json({ error : response.data.error });
         }
     } catch (error) {
-        console.error("Error fetching IRCTC userName", error.message.error);
+        // console.error("Error fetching IRCTC userName", error.message.error);
         res.status(200).json({ error : error.message.error });
     }
 };
@@ -289,16 +289,16 @@ exports.getCountryList = async (req, res) => {
     try {
         const url = "https://stagews.irctc.co.in/eticketing/webservices/userregistrationservice/country";
         const response = await axios.get(url, auth, { headers: apiHeaders });
-        console.log("271 code response", response.data);
+        // console.log("271 code response", response.data);
         
         if (response.data?.countryList) {
             return res.status(200).json(response.data.countryList); 
         }
 
-        console.log("Country list not found", response.data);
+        // console.log("Country list not found", response.data);
         return res.status(404).json({ message: "Country list not found" }); 
     } catch (error) {
-        console.log("Error in fetching the country list", error);
+        // console.log("Error in fetching the country list", error);
         return res.status(500).json({ message: "Failed to fetch country list" });
     }
 };
@@ -306,20 +306,20 @@ exports.getCountryList = async (req, res) => {
 exports.getIRCTCForgotDetails = async (req, res) => {
     try{
         const { userName : userLoginId, email, mobile, dob, IRCTC_req_type, otpType } = req.body;
-        console.log("The body data of forgot 277 ", req.body);
+        // console.log("The body data of forgot 277 ", req.body);
         
         const url = `https://stagews.irctc.co.in/eticketing/webservices/taprofileservices/forgotDetails/${IRCTC_req_type}?userLoginId=${userLoginId}&email=${email}&mobile=${mobile}&otpType=${otpType}&dob=${dob}`
         const response = await axios.get(url, auth, { headers: apiHeaders });
-        console.log("data came ", response.data);
+        // console.log("data came ", response.data);
         if(response.data.status){
-            console.log("284 Success.. ", response.data.status);
+            // console.log("284 Success.. ", response.data.status);
             res.status(200).json({ success : response.data.status });
         }else{
-            console.log("Some thing went wrong in forgot IRCTC details ..", response.data);
+            // console.log("Some thing went wrong in forgot IRCTC details ..", response.data);
             res.status(200).json({ error : response.data.error });
         }
     }catch(error){
-        console.log("Error in fething the Details", error);
+        // console.log("Error in fething the Details", error);
         return res.status(500).json({ error: error.message.error});
     }
 }
@@ -328,7 +328,7 @@ exports.getIRCTCForgotDetails = async (req, res) => {
 
 exports.getRazorpayOrder = async (req, res) => {
     const { amount } = req.body;
-    console.log("Creating Razorpay order with amount:", amount);
+    // console.log("Creating Razorpay order with amount:", amount);
 
     try {
         const options = {
@@ -337,12 +337,12 @@ exports.getRazorpayOrder = async (req, res) => {
             receipt: 'receipt_order_74394',
         };
 
-        console.log("Creating Razorpay order with options:", options);
+        // console.log("Creating Razorpay order with options:", options);
         
 
         const order = await razorpay.orders.create(options);
 
-        console.log("Razorpay order created successfully:", order);
+        // console.log("Razorpay order created successfully:", order);
         
         res.json(order);
     } catch (error) {

@@ -67,7 +67,7 @@ exports.getHotelsList = async (req, res) => {
             "Rooms": Rooms,
             "CityId": cityId,
             "PageNo": PageNo,
-            "PageSize": 10,
+            "PageSize": 1000,
             "HotelID": null,
             "SessionID": SessionID,
             "TravellerNationality": "IN",
@@ -81,7 +81,7 @@ exports.getHotelsList = async (req, res) => {
             "SortCriteria": Sort || { "SortBy": "StarRating", "SortOrder": "Desc" },
             "SearchProviders": null
         });
-        console.log("Response:", response.data);
+        // console.log("Response:", response.data);
         res.status(200).json(response.data);
     } catch (error) {
         console.error('Error fetching hotels:', error.message);
@@ -120,7 +120,7 @@ exports.getHotelDetails = async (req, res) => {
         SortCriteria = { SortBy: "StarRating", SortOrder: "Desc" }
     } = req.body;
 
-    console.log("Received request to get hotel details with body:", req.body);
+    // console.log("Received request to get hotel details with body:", req.body);
 
     // 3) Build the full payload
     const payload = {
@@ -149,7 +149,7 @@ exports.getHotelDetails = async (req, res) => {
             `${base_url}/SIGNIX/B2B/Hotel/DetailWithPrice`,
             payload
         );
-        console.log("====> Response from getHotelDetails:", response.data);
+        // console.log("====> Response from getHotelDetails:", response.data);
         return res.status(200).json(response.data);
     } catch (err) {
         console.error("Error fetching hotel details:", err.message);
@@ -162,18 +162,18 @@ exports.getHotelDetails = async (req, res) => {
 exports.getHotelImages = async (req, res) => {
 
     const { HotelProviderSearchId } = req.body;
-    console.log('Hotels provider id ', HotelProviderSearchId)
+    // console.log('Hotels provider id ', HotelProviderSearchId)
 
     try {
         const response = await axios.post(`${base_url}/SIGNIX/B2B/Hotel/Media`, {
             HotelProviderSearchId,
             "Credential": credentials
         });
-        console.log("====> Response from the get hotels pics are: ", response.data);
+        // console.log("====> Response from the get hotels pics are: ", response.data);
         res.status(200).json(response.data);
 
     } catch (error) {
-        console.log("Error came while fetching the hotel pics ", error.message);
+        // console.log("Error came while fetching the hotel pics ", error.message);
         res.status(500).json({ "error": error.message });
 
     }
