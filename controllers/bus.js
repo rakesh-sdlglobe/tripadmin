@@ -17,7 +17,7 @@ function getLocalIP() {
 }
 
 exports.authenticateBusAPI = async (req, res) => {
-    console.log("Yes, calling the bus ");
+    // console.log("Yes, calling the bus ");
     
 
     const data = {
@@ -26,7 +26,7 @@ exports.authenticateBusAPI = async (req, res) => {
         "ClientId": process.env.BUS_API_CLIENT_ID,
         "EndUserIp": getLocalIP()
     }
-    console.log("DAta is working... ",data);
+    // console.log("DAta is working... ",data);
     
     try {
         const apiResponse = await axios.post(
@@ -38,9 +38,11 @@ exports.authenticateBusAPI = async (req, res) => {
               }
             }
           );
-        console.log("API Response is working... ",apiResponse.data);
+        // console.log("API Response is working... ",apiResponse.data);
 
-        res.status(200).json({TokenId:apiResponse.data.TokenId,EndUserIp:getLocalIP(),TokenAgencyId:AgencyId,TokenMemberId:MemberId});
+        res.status(200).json({TokenId:apiResponse.data.TokenId,
+            TokenAgencyId:apiResponse.data.Member.AgencyId,TokenMemberId:apiResponse.data.Member.MemberId,
+            EndUserIp:getLocalIP(),message:"Bus API authenticated successfully"});
     } catch (error) {
         // console.error('Error fetching bus cities:', error);
         res.status(500).json({ message: error.message });
