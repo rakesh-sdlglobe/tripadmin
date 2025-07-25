@@ -40,7 +40,7 @@ exports.authenticateBusAPI = async (req, res) => {
           );
         console.log("API Response is working... ",apiResponse.data);
 
-        res.status(200).json({TokenId:apiResponse.data.TokenId,EndUserIp:getLocalIP()});
+        res.status(200).json({TokenId:apiResponse.data.TokenId,EndUserIp:getLocalIP(),TokenAgencyId:AgencyId,TokenMemberId:MemberId});
     } catch (error) {
         // console.error('Error fetching bus cities:', error);
         res.status(500).json({ message: error.message });

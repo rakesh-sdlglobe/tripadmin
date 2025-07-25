@@ -157,7 +157,30 @@ exports.getHotelDetails = async (req, res) => {
     }
 };
 
+exports.getPriceValidation = async (req, res) => {
+    // 1) Destructure everything (with defaults)
+    const request = req.body;
+    request.Credential = credentials;
+    // console.log("Received request to get hotel details with body:", req.body);
 
+    // 3) Build the full payload
+    const payload = request;
+
+    console.log("Calling SIGNIX/B2B/PriceValidation with payload:", payload);
+
+    // 4) Make the request
+    try {
+        const response = await axios.post(
+            `${base_url}/SIGNIX/B2B/PriceValidation`,
+            payload
+        );
+        // console.log("====> Response from getHotelDetails:", response.data);
+        return res.status(200).json(response.data);
+    } catch (err) {
+        console.error("Error fetching PriceValidation:", err.message);
+        return res.status(500).json({ error: err.message });
+    }
+};
 // get hotel pics
 exports.getHotelImages = async (req, res) => {
 
