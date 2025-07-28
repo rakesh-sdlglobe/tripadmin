@@ -2,6 +2,10 @@ const connection = require('../utils/database');
 const moment = require('moment');
 const { default: axios } = require('axios');
 const { response } = require('express');
+const express = require('express');
+const Razorpay = require('razorpay');
+const cors = require('cors');
+const crypto = require('crypto');
 
 const base_url = 'https://sandboxentityapi.trateq.com/';
 const credentials = {
@@ -13,7 +17,10 @@ const credentials = {
     "LanguageLocale": process.env.LANGUAGE,
     "IpAddress": "8.8.8.8"
 }
-
+const razorpay = new Razorpay({
+  key_id: process.env.RAZORPAY_KEY_ID,
+  key_secret: process.env.RAZORPAY_KEY_SECRET,
+});
 exports.getHotelCities = async (req, res) => {  
 
     const { input } = req.body;
@@ -38,24 +45,7 @@ exports.getHotelsList = async (req, res) => {
     if (!cityId || !checkInDate || !checkOutDate || !Rooms) {
         return res.status(400).json({ error: 'Missing required fields' });
     }
-    /* Filter data {
-                "MinPrice": 0.0,
-                "MaxPrice": 999999999.0,
-                "MealPlans": null,
-                "StarRatings": "",
-                "Hotels": null,
-                "Favorite": null
-            }
     
-    */
-
-            /* SortCriteria data {
-                "SortBy": "StarRating",
-                "SortOrder": "Desc"
-            }
-    
-    */
-
     try {
 
         const response = await axios.post(`${base_url}/SIGNIX/B2B/Hotel/CacheSearch`, {
@@ -181,6 +171,45 @@ exports.getPriceValidation = async (req, res) => {
         return res.status(500).json({ error: err.message });
     }
 };
+
+exports.getHotelServiceTax = async (req, res) => {
+       // 1) Destructure everything (with defaults)
+    const request = req.body;
+    request.Credential = credentials;
+    // console.log("Received request to get hotel details with body:", req.body);
+
+    // 3) Build the full payload
+    const payload = request;
+
+    console.log("Calling SIGNIX/B2B/ServiceTax with payload:", payload);
+
+    // 4) Make the request
+    try {
+        const response = await axios.post(
+            `${base_url}/SIGNIX/B2B/ServiceTax`,
+            payload
+        );
+        // console.log("====> Response from getHotelDetails:", response.data);
+        return res.status(200).json(response.data);
+    } catch (err) {
+        console.error("Error fetching PriceValidation:", err.message);
+        return res.status(500).json({ error: err.message });
+    }
+}
+exports.getHotelPrebook = async (req, res) => {
+    const PreBookRequest = req.body;
+    PreBookRequest.Credential = credentials;
+    try {
+        const response = await axios.post(`${base_url}/SIGNIX/B2B/PreBook`, PreBookRequest);
+        res.status(200).json(response.data);
+
+    } catch (error) {
+        res.status(500).json({ "error": error.message });
+
+    }
+}
+
+
 // get hotel pics
 exports.getHotelImages = async (req, res) => {
 
@@ -202,3 +231,21 @@ exports.getHotelImages = async (req, res) => {
     }
 
 }
+
+exports.processPayment = async (req, res) => {
+    const { amount, currency, receipt } = req.body;
+
+    try {
+        const options = {
+            amount: amount * 100, // amount in paise
+            currency: currency,
+            receipt: receipt,
+        };
+
+        const order = await razorpay.orders.create(options);
+        return res.status(200).json(order);
+    } catch (error) {
+        console.error('Error creating Razorpay order:', error.message);
+        return res.status(500).json({ error: 'Internal server error' });
+    }
+};  
