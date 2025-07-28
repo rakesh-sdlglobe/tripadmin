@@ -111,13 +111,19 @@ exports.BusSearch=async(req,res)=>{
 }
 
 exports.GetBusSeatLayOut=async(req,res)=>{
-    const {EndUserIp,ResultIndex,TraceId,TokenId}=req.body
+    console.log(req.body);
+    
+    const {IpAddress,ResultIndex,TraceId,TokenId}=req.body
     const data={
-        "EndUserIp":EndUserIp,
+        "EndUserIp":IpAddress,
         "ResultIndex":ResultIndex,
         "TraceId":TraceId,
         "TokenId":TokenId
     }
+    console.log("Data is working... ",data.EndUserIp);
+    
+    console.log("Data is working... ",data);
+    
         try {
             const apiResponse = await axios.post('https://busbe.tektravels.com/Busservice.svc/rest/GetBusSeatLayOut',data,
                 {

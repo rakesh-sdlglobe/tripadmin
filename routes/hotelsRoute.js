@@ -8,6 +8,9 @@ router.post('/getHotelCities', hotelController.getHotelCities);
 router.post('/getHotelsList', hotelController.getHotelsList);
 router.post('/getHotelDetails', hotelController.getHotelDetails);
 router.post('/getPriceValidation', hotelController.getPriceValidation);
+router.post('/getHotelServiceTax', hotelController.getHotelServiceTax);
+router.post('/getHotelPrebook', hotelController.getHotelPrebook);
+router.post('/processPayment', hotelController.processPayment);
 router.post('/getHotelImages', hotelController.getHotelImages);
 
 module.exports = router;
