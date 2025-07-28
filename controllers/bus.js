@@ -141,9 +141,11 @@ exports.GetBusSeatLayOut=async(req,res)=>{
 }
 
 exports.GetBoardingPintDetails=async(req,res)=>{
-    const {EndUserIp,ResultIndex,TraceId,TokenId}=req.body
+    console.log("Boarding point details is working... ",req.body);
+    
+    const {IpAddress,ResultIndex,TraceId,TokenId}=req.body
     const data={
-        "EndUserIp":EndUserIp,
+        "EndUserIp":IpAddress,
         "ResultIndex":ResultIndex,
         "TraceId":TraceId,
         "TokenId":TokenId
