@@ -6,7 +6,12 @@ const express = require('express');
 const Razorpay = require('razorpay');
 const cors = require('cors');
 const crypto = require('crypto');
+const e = require('express');
 
+const razorpay = new Razorpay({
+  key_id: process.env.RAZORPAY_KEY_ID,
+  key_secret: process.env.RAZORPAY_KEY_SECRET,
+});
 const base_url = 'https://sandboxentityapi.trateq.com/';
 const credentials = {
     "Type": "C",
@@ -17,10 +22,7 @@ const credentials = {
     "LanguageLocale": process.env.LANGUAGE,
     "IpAddress": "8.8.8.8"
 }
-const razorpay = new Razorpay({
-  key_id: process.env.RAZORPAY_KEY_ID,
-  key_secret: process.env.RAZORPAY_KEY_SECRET,
-});
+
 exports.getHotelCities = async (req, res) => {  
 
     const { input } = req.body;
@@ -233,9 +235,11 @@ exports.getHotelImages = async (req, res) => {
 }
 
 exports.processPayment = async (req, res) => {
+    
     const { amount, currency, receipt } = req.body;
 
     try {
+        
         const options = {
             amount: amount * 100, // amount in paise
             currency: currency,
@@ -249,3 +253,16 @@ exports.processPayment = async (req, res) => {
         return res.status(500).json({ error: 'Internal server error' });
     }
 };  
+
+exports.getHotelBooked = async (req, res) => {
+    const BookRequest = req.body;
+    BookRequest.Credential = credentials;
+    try {
+        const response = await axios.post(`${base_url}/SIGNIX/B2B/PreBook`, BookRequest);
+        res.status(200).json(response.data);
+
+    } catch (error) {
+        res.status(500).json({ "error": error.message });
+
+    }
+}
