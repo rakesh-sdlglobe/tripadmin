@@ -8,5 +8,6 @@ router.post('/getBusCityList', busController.GetBusCityList);
 router.post('/busSearch', busController.BusSearch);
 router.post('/getBusSeatLayOut', busController.GetBusSeatLayOut);
 router.post('/getBoardingPointDetails', busController.GetBoardingPintDetails);
+router.post('/getBlock', busController.GetBlock);
 
 module.exports = router;

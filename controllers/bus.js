@@ -3,6 +3,7 @@ const moment = require('moment');
 const { default: axios } = require('axios');
 const { response } = require('express');
 const os = require('os');
+const { log } = require('console');
 
 function getLocalIP() {
     const interfaces = os.networkInterfaces();
@@ -51,7 +52,7 @@ exports.authenticateBusAPI = async (req, res) => {
 
 exports.GetBusCityList = async (req, res) => {
     const { TokenId, IpAddress } = req.body;
-    console.log("TokenId is working... ", TokenId, IpAddress);
+    // console.log("TokenId is working... ", TokenId, IpAddress);
 
     if (!TokenId || !IpAddress) {
         return res.status(400).json({ message: "TokenId and IpAddress are required in the request body." });
@@ -62,7 +63,7 @@ exports.GetBusCityList = async (req, res) => {
         "IpAddress": IpAddress,
         "ClientId": process.env.BUS_API_CLIENT_ID
     };
-    console.log("Data is working... ", data);
+    // console.log("Data is working... ", data);
 
     try {
         const apiResponse = await axios.post(
@@ -102,16 +103,16 @@ exports.BusSearch=async(req,res)=>{
                 }
             }
         )
-        console.log("API Response is working... ",apiResponse.data);
+        // console.log("API Response is working... ",apiResponse.data);
         res.status(200).json(apiResponse.data);
     } catch (error) {
-        console.error('Error fetching bus search:', error);
+        // console.error('Error fetching bus search:', error);
         res.status(500).json({ message: error.message });
     }
 }
 
 exports.GetBusSeatLayOut=async(req,res)=>{
-    console.log(req.body);
+    // console.log(req.body);
     
     const {IpAddress,ResultIndex,TraceId,TokenId}=req.body
     const data={
@@ -141,7 +142,7 @@ exports.GetBusSeatLayOut=async(req,res)=>{
 }
 
 exports.GetBoardingPintDetails=async(req,res)=>{
-    console.log("Boarding point details is working... ",req.body);
+    // console.log("Boarding point details is working... ",req.body);
     
     const {IpAddress,ResultIndex,TraceId,TokenId}=req.body
     const data={
