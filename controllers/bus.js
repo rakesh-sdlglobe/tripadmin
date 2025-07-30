@@ -166,3 +166,170 @@ exports.GetBoardingPintDetails=async(req,res)=>{
         res.status(500).json({ message: error.message });
     }
 }
+
+
+exports.GetBlock=async(req,res)=>{
+    console.log("Block is working... ");
+    console.log("Request body is working... ", req.body);
+    
+    // Validate request structure
+    if (!req.body.Passenger || !Array.isArray(req.body.Passenger) || req.body.Passenger.length === 0) {
+        return res.status(400).json({ 
+            message: 'Passenger array is required and must not be empty' 
+        });
+    }
+    
+    // Validate required fields for seat layout
+    if (!req.body.TokenId || !req.body.TraceId || !req.body.EndUserIp || !req.body.ResultIndex) {
+        return res.status(400).json({ 
+            message: 'Missing required fields: TokenId, TraceId, EndUserIp, ResultIndex' 
+        });
+    }
+    
+    try {
+        // First, get the current seat layout to ensure we have the latest seat details
+        const seatLayoutData = {
+            "EndUserIp": req.body.EndUserIp,
+            "ResultIndex": req.body.ResultIndex,
+            "TraceId": req.body.TraceId,
+            "TokenId": req.body.TokenId
+        };
+        
+        console.log("Getting seat layout first...", seatLayoutData);
+        
+        const seatLayoutResponse = await axios.post(
+            'https://busbe.tektravels.com/Busservice.svc/rest/GetBusSeatLayOut',
+            seatLayoutData,
+            {
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            }
+        );
+        
+        console.log("Seat layout response:", seatLayoutResponse.data);
+        
+        // Now proceed with the block request using the validated seat data
+        const requestData = JSON.parse(JSON.stringify(req.body));
+        
+        // Validate each passenger's seat data
+        requestData.Passenger.forEach((passenger, index) => {
+            console.log(`Validating passenger ${index}:`, passenger);
+            
+            if (!passenger.Seat) {
+                throw new Error(`Passenger ${index} is missing Seat data`);
+            }
+            
+            const seat = passenger.Seat;
+            
+            // Check for required seat fields
+            const requiredFields = ['SeatIndex', 'SeatName', 'SeatType', 'SeatStatus'];
+            for (const field of requiredFields) {
+                if (seat[field] === undefined || seat[field] === null) {
+                    throw new Error(`Passenger ${index} seat is missing required field: ${field}`);
+                }
+            }
+            
+            // Enhanced pricing validation
+            if (!seat.PublishedPrice && !seat.SeatFare) {
+                throw new Error(`Passenger ${index} seat is missing pricing information (PublishedPrice or SeatFare)`);
+            }
+            
+            // Validate price format and values
+            if (seat.PublishedPrice) {
+                const price = parseFloat(seat.PublishedPrice);
+                if (isNaN(price) || price <= 0) {
+                    throw new Error(`Passenger ${index} has invalid PublishedPrice: ${seat.PublishedPrice}`);
+                }
+                // Ensure price is a positive number
+                seat.PublishedPrice = Math.abs(price);
+            }
+            
+            if (seat.SeatFare) {
+                const fare = parseFloat(seat.SeatFare);
+                console.log("Fare is working... ", fare);
+                
+                if (isNaN(fare) || fare <= 0) {
+                    throw new Error(`Passenger ${index} has invalid SeatFare: ${seat.SeatFare}`);
+                }
+                // Ensure fare is a positive number
+                seat.SeatFare = Math.abs(fare);
+            }
+            
+            console.log(`Passenger ${index} seat validation passed`);
+        });
+        
+        // Convert SeatIndex from string to integer if it exists
+        if (requestData.Passenger && Array.isArray(requestData.Passenger)) {
+            requestData.Passenger.forEach(passenger => {
+                console.log("Passenger is working... ", passenger);
+                if (passenger.Seat && passenger.Seat.SeatIndex) {
+                    // Handle different seat index formats
+                    const seatIndex = passenger.Seat.SeatIndex;
+                    
+                    if (typeof seatIndex === 'string') {
+                        if (seatIndex.includes('-')) {
+                            // Format like "2-1" - convert to unique integer
+                            const parts = seatIndex.split('-');
+                            if (parts.length === 2) {
+                                // Use a more reliable conversion method
+                                passenger.Seat.SeatIndex = parseInt(parts[0]) * 1000 + parseInt(parts[1]);
+                            } else {
+                                // Fallback to simple integer conversion
+                                passenger.Seat.SeatIndex = parseInt(seatIndex);
+                            }
+                        } else {
+                            // Direct integer conversion
+                            passenger.Seat.SeatIndex = parseInt(seatIndex);
+                        }
+                    } else if (typeof seatIndex === 'number') {
+                        // Already a number, ensure it's integer
+                        passenger.Seat.SeatIndex = Math.floor(seatIndex);
+                    }
+                    
+                    // Ensure SeatIndex is a valid positive integer
+                    if (isNaN(passenger.Seat.SeatIndex) || passenger.Seat.SeatIndex <= 0) {
+                        console.error('Invalid SeatIndex:', seatIndex);
+                        throw new Error('Invalid SeatIndex format. Expected format like "2-1" or integer.');
+                    }
+                }
+            });
+        }
+        
+        // Validate boarding and dropping point IDs
+        if (!requestData.BoardingPointId || !requestData.DroppingPointId) {
+            throw new Error('Missing required fields: BoardingPointId, DroppingPointId');
+        }
+        
+        console.log("Sending block request with data:", requestData);
+        
+        const apiResponse = await axios.post(
+            'https://BusBE.tektravels.com/Busservice.svc/rest/Block', 
+            requestData,
+            {
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            }
+        );
+        
+        console.log("API Response is working... ", apiResponse.data);
+        res.status(200).json(apiResponse.data);
+        
+    } catch (error) {
+        console.error('Error in GetBlock:', error);
+        
+        // Handle specific API errors
+        if (error.response && error.response.data) {
+            const errorData = error.response.data;
+            if (errorData.BlockResult && errorData.BlockResult.Error) {
+                return res.status(400).json({ 
+                    message: errorData.BlockResult.Error.ErrorMessage,
+                    errorCode: errorData.BlockResult.Error.ErrorCode
+                });
+            }
+        }
+        
+        res.status(500).json({ message: error.message });
+    }
+}
