@@ -257,3 +257,17 @@ exports.getHotelBooked = async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 };
+
+exports.getHotelBookedDetails = async (req, res) => {
+  const BookedDetailsRequest = req.body;
+  BookedDetailsRequest.Credential = credentials;
+  try {
+    const response = await axios.post(
+      `${base_url}SIGNIX/B2B/ReservationDetail`,
+      BookedDetailsRequest
+    );
+    res.status(200).json(response.data);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
