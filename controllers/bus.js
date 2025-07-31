@@ -121,9 +121,9 @@ exports.GetBusSeatLayOut=async(req,res)=>{
         "TraceId":TraceId,
         "TokenId":TokenId
     }
-    console.log("Data is working... ",data.EndUserIp);
+    // console.log("Data is working... ",data.EndUserIp);
     
-    console.log("Data is working... ",data);
+    // console.log("Data is working... ",data);
     
         try {
             const apiResponse = await axios.post('https://busbe.tektravels.com/Busservice.svc/rest/GetBusSeatLayOut',data,
@@ -169,14 +169,14 @@ exports.GetBoardingPintDetails=async(req,res)=>{
 
 
 exports.GetBlock=async(req,res)=>{
-    console.log("Block is working... ");
-    console.log("Request body is working... ", req.body);
-    
+    console.log("1.Block is working... ");
+    console.log("1.Request body is working... ", req.body);
+  
     // Validate request structure
     if (!req.body.Passenger || !Array.isArray(req.body.Passenger) || req.body.Passenger.length === 0) {
         return res.status(400).json({ 
             message: 'Passenger array is required and must not be empty' 
-        });
+        }); 
     }
     
     // Validate required fields for seat layout
@@ -215,6 +215,16 @@ exports.GetBlock=async(req,res)=>{
         // Validate each passenger's seat data
         requestData.Passenger.forEach((passenger, index) => {
             console.log(`Validating passenger ${index}:`, passenger);
+            
+            // Validate required passenger fields
+            if (!passenger.FirstName || !passenger.LastName || !passenger.Age || !passenger.Gender || !passenger.Phoneno || !passenger.Email) {
+                throw new Error(`Passenger ${index + 1} is missing required fields: FirstName, LastName, Age, Gender, Phoneno, Email`);
+            }
+            
+            // ID fields are now optional - only validate if both are provided
+            if ((passenger.IdType && !passenger.IdNumber) || (passenger.IdNumber && !passenger.IdType)) {
+                throw new Error(`Passenger ${index + 1}: If ID information is provided, both IdType and IdNumber are required`);
+            }
             
             if (!passenger.Seat) {
                 throw new Error(`Passenger ${index} is missing Seat data`);
@@ -301,7 +311,7 @@ exports.GetBlock=async(req,res)=>{
             throw new Error('Missing required fields: BoardingPointId, DroppingPointId');
         }
         
-        console.log("Sending block request with data:", requestData);
+        console.log("Sending block request:", requestData);
         
         const apiResponse = await axios.post(
             'https://BusBE.tektravels.com/Busservice.svc/rest/Block', 
@@ -326,6 +336,137 @@ exports.GetBlock=async(req,res)=>{
                 return res.status(400).json({ 
                     message: errorData.BlockResult.Error.ErrorMessage,
                     errorCode: errorData.BlockResult.Error.ErrorCode
+                });
+            }
+        }
+        
+        res.status(500).json({ message: error.message });
+    }
+}
+
+
+exports.GetBook = async (req, res) => {
+    // console.log("1.Book is working... ");
+    // console.log("1.Request body is working... ", JSON.stringify(req.body, null, 2)); // Better logging
+    console.log("1.Request body is working... ", req.body);
+    
+    try {
+        // Validate required fields for booking
+        const requiredFields = ['EndUserIp', 'ResultIndex', 'TraceId', 'TokenId', 'BoardingPointId', 'DroppingPointId', 'Passenger'];
+        for (const field of requiredFields) {
+            if (!req.body[field]) {
+                return res.status(400).json({ 
+                    message: `Missing required field: ${field}` 
+                });
+            }
+        }
+
+        // Validate passenger data
+        if (!Array.isArray(req.body.Passenger) || req.body.Passenger.length === 0) {
+            return res.status(400).json({ 
+                message: 'Passenger array is required and must not be empty' 
+            });
+        }
+
+        // Validate each passenger
+        req.body.Passenger.forEach((passenger, index) => {
+            if (!passenger.FirstName || !passenger.LastName || !passenger.Gender || !passenger.Age) {
+                throw new Error(`Passenger ${index} is missing required fields (FirstName, LastName, Gender, Age)`);
+            }
+            
+            if (!passenger.Seat || !passenger.Seat.SeatIndex) {
+                throw new Error(`Passenger ${index} is missing seat information`);
+            }
+        });
+
+        console.log("Sending book request:", req.body);
+
+        const apiResponse = await axios.post(
+            'https://BusBE.tektravels.com/Busservice.svc/rest/Book',
+            req.body,
+            {
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            }
+        );
+        
+        console.log("Book API Response is working... ", apiResponse.data);
+        
+        // Validate the response
+        if (apiResponse.data && apiResponse.data.BookResult) {
+            const bookResult = apiResponse.data.BookResult;
+            
+            // Check if booking was successful (ResponseStatus === 1 and no error)
+            if (bookResult.ResponseStatus === 1 && 
+                (!bookResult.Error || bookResult.Error.ErrorCode === 0 || bookResult.Error.ErrorCode === undefined)) {
+                // console.log("Booking successful with BusId:", bookResult.BusId);
+                // console.log("Booking status:", bookResult.BusBookingStatus);
+                res.status(200).json(apiResponse.data);
+            } else {
+                //          console.error("Booking failed:", bookResult.Error);
+                res.status(400).json({
+                    message: bookResult.Error?.ErrorMessage || 'Booking failed',
+                    errorCode: bookResult.Error?.ErrorCode
+                });
+            }
+        } else {
+            res.status(500).json({ message: 'Invalid response from booking API' });
+        }
+        
+    } catch (error) {
+        // console.error('Error booking bus:', error);
+        
+        // Handle specific API errors
+        if (error.response && error.response.data) {
+            const errorData = error.response.data;
+            if (errorData.BookResult && errorData.BookResult.Error) {
+                return res.status(400).json({ 
+                    message: errorData.BookResult.Error.ErrorMessage,
+                    errorCode: errorData.BookResult.Error.ErrorCode
+                });
+            }
+        }
+        
+        res.status(500).json({ message: error.message });
+    }
+}
+
+
+
+exports.GetBookingDetails = async (req, res) => {
+    console.log("1.Get booking details is working... ");
+    console.log("1.Request body is working... ", req.body); // Better logging
+  
+    
+    
+   
+    
+
+    console.log("Sending booking details request:", req.body);
+
+    try {
+        const apiResponse = await axios.post(
+            'https://BusBE.tektravels.com/Busservice.svc/rest/GetBookingDetail',
+            req.body,
+            {
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            }
+        );
+        console.log("Booking Details API Response is working... ", apiResponse.data);
+        res.status(200).json(apiResponse.data);
+    } catch (error) {
+        console.error('Error getting booking details:', error);
+        
+        // Handle specific API errors
+        if (error.response && error.response.data) {
+            const errorData = error.response.data;
+            if (errorData.BookingDetailsResult && errorData.BookingDetailsResult.Error) {
+                return res.status(400).json({ 
+                    message: errorData.BookingDetailsResult.Error.ErrorMessage,
+                    errorCode: errorData.BookingDetailsResult.Error.ErrorCode
                 });
             }
         }
