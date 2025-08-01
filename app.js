@@ -12,6 +12,7 @@ const emailRoutes = require('./routes/emailRoutes');
 const passwordRoutes = require('./routes/passwordRoutes');
 const otpRoutes = require('./routes/otpRoutes');
 const hotelRoutes = require('./routes/hotelsRoute');
+const flightRoutes = require('./routes/flightsRoutes');
 const busRoutes = require('./routes/busRoutes');
 
 const app = express();
@@ -54,6 +55,7 @@ app.use('/api/users', userRoutes);
 app.use('/api/booking',revenueRoutes);
 app.use('/api/trains',trainRoutes);
 app.use('/api/hotels', hotelRoutes);
+app.use('/api/flights', flightRoutes);
 app.use('/api/bus', busRoutes);
 app.use('/api', emailRoutes);
 app.use('/api/password', passwordRoutes);
