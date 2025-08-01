@@ -13,5 +13,6 @@ router.post("/processPayment", hotelController.processPayment);
 router.post("/getHotelBooked", hotelController.getHotelBooked);
 router.post("/getHotelBookedDetails", hotelController.getHotelBookedDetails);
 router.post("/getHotelImages", hotelController.getHotelImages);
+router.post('/getGeoList', hotelController.getHotelsGeoList);
 
 module.exports = router;

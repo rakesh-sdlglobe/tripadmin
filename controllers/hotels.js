@@ -271,3 +271,26 @@ exports.getHotelBookedDetails = async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 };
+exports.getHotelsGeoList = async (req, res) => {
+  const { SessionId } = req.body;
+  console.log("getHotelsGeoList - Request body:", req.body);
+  console.log("getHotelsGeoList - SessionId:", SessionId);
+
+  try {
+      const payload = {
+          SessionId,
+          "Credential": credentials
+      };
+      console.log("getHotelsGeoList - Payload to external API:", payload);
+      
+      const response = await axios.post(`${base_url}/SIGNIX/B2B/Hotel/GpsCoordinateList`, payload);
+      console.log("getHotelsGeoList - Full response from external API:", JSON.stringify(response.data, null, 2));
+      console.log("getHotelsGeoList - Response keys:", Object.keys(response.data || {}));
+
+      res.status(200).json(response.data);
+  } catch (error) {
+      console.error("getHotelsGeoList - Error:", error.message);
+      console.error("getHotelsGeoList - Error response:", error.response?.data);
+      res.status(500).json({ "error": error.message });
+  }
+}
