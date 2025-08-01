@@ -346,44 +346,127 @@ exports.GetBlock=async(req,res)=>{
 
 
 exports.GetBook = async (req, res) => {
-    // console.log("1.Book is working... ");
-    // console.log("1.Request body is working... ", JSON.stringify(req.body, null, 2)); // Better logging
+    console.log("1.Book is working... ");
     console.log("1.Request body is working... ", req.body);
+  
+    // Validate request structure
+    if (!req.body.Passenger || !Array.isArray(req.body.Passenger) || req.body.Passenger.length === 0) {
+        return res.status(400).json({ 
+            message: 'Passenger array is required and must not be empty' 
+        }); 
+    }
+    
+    // Validate required fields for booking
+    if (!req.body.TokenId || !req.body.TraceId || !req.body.EndUserIp || !req.body.ResultIndex) {
+        return res.status(400).json({ 
+            message: 'Missing required fields: TokenId, TraceId, EndUserIp, ResultIndex' 
+        });
+    }
     
     try {
-        // Validate required fields for booking
-        const requiredFields = ['EndUserIp', 'ResultIndex', 'TraceId', 'TokenId', 'BoardingPointId', 'DroppingPointId', 'Passenger'];
-        for (const field of requiredFields) {
-            if (!req.body[field]) {
-                return res.status(400).json({ 
-                    message: `Missing required field: ${field}` 
-                });
-            }
-        }
-
-        // Validate passenger data
-        if (!Array.isArray(req.body.Passenger) || req.body.Passenger.length === 0) {
-            return res.status(400).json({ 
-                message: 'Passenger array is required and must not be empty' 
-            });
-        }
-
-        // Validate each passenger
-        req.body.Passenger.forEach((passenger, index) => {
-            if (!passenger.FirstName || !passenger.LastName || !passenger.Gender || !passenger.Age) {
-                throw new Error(`Passenger ${index} is missing required fields (FirstName, LastName, Gender, Age)`);
+        // Prepare the booking request data
+        const requestData = JSON.parse(JSON.stringify(req.body));
+        
+        // Validate each passenger's data
+        requestData.Passenger.forEach((passenger, index) => {
+            console.log(`Validating passenger ${index}:`, passenger);
+            
+            // Validate required passenger fields
+            if (!passenger.FirstName || !passenger.LastName || !passenger.Age || !passenger.Gender || !passenger.Phoneno || !passenger.Email) {
+                throw new Error(`Passenger ${index + 1} is missing required fields: FirstName, LastName, Age, Gender, Phoneno, Email`);
             }
             
-            if (!passenger.Seat || !passenger.Seat.SeatIndex) {
-                throw new Error(`Passenger ${index} is missing seat information`);
+            // ID fields are optional - only validate if both are provided
+            if ((passenger.IdType && !passenger.IdNumber) || (passenger.IdNumber && !passenger.IdType)) {
+                throw new Error(`Passenger ${index + 1}: If ID information is provided, both IdType and IdNumber are required`);
             }
+            
+            if (!passenger.Seat) {
+                throw new Error(`Passenger ${index} is missing Seat data`);
+            }
+            
+            const seat = passenger.Seat;
+            
+            // Check for required seat fields
+            const requiredFields = ['SeatIndex', 'SeatName', 'SeatType', 'SeatStatus'];
+            for (const field of requiredFields) {
+                if (seat[field] === undefined || seat[field] === null) {
+                    throw new Error(`Passenger ${index} seat is missing required field: ${field}`);
+                }
+            }
+            
+            // Enhanced pricing validation
+            if (!seat.PublishedPrice && !seat.SeatFare) {
+                throw new Error(`Passenger ${index} seat is missing pricing information (PublishedPrice or SeatFare)`);
+            }
+            
+            // Validate price format and values
+            if (seat.PublishedPrice) {
+                const price = parseFloat(seat.PublishedPrice);
+                if (isNaN(price) || price <= 0) {
+                    throw new Error(`Passenger ${index} has invalid PublishedPrice: ${seat.PublishedPrice}`);
+                }
+                seat.PublishedPrice = Math.abs(price);
+            }
+            
+            if (seat.SeatFare) {
+                const fare = parseFloat(seat.SeatFare);
+                console.log("Fare is working... ", fare);
+                
+                if (isNaN(fare) || fare <= 0) {
+                    throw new Error(`Passenger ${index} has invalid SeatFare: ${seat.SeatFare}`);
+                }
+                seat.SeatFare = Math.abs(fare);
+            }
+            
+            console.log(`Passenger ${index} validation passed`);
         });
-
-        console.log("Sending book request:", req.body);
-
+        
+        // Convert SeatIndex from string to integer if it exists
+        if (requestData.Passenger && Array.isArray(requestData.Passenger)) {
+            requestData.Passenger.forEach(passenger => {
+                console.log("Passenger is working... ", passenger);
+                if (passenger.Seat && passenger.Seat.SeatIndex) {
+                    // Handle different seat index formats
+                    const seatIndex = passenger.Seat.SeatIndex;
+                    
+                    if (typeof seatIndex === 'string') {
+                        if (seatIndex.includes('-')) {
+                            // Format like "2-1" - convert to unique integer
+                            const parts = seatIndex.split('-');
+                            if (parts.length === 2) {
+                                passenger.Seat.SeatIndex = parseInt(parts[0]) * 1000 + parseInt(parts[1]);
+                            } else {
+                                passenger.Seat.SeatIndex = parseInt(seatIndex);
+                            }
+                        } else {
+                            // Direct integer conversion
+                            passenger.Seat.SeatIndex = parseInt(seatIndex);
+                        }
+                    } else if (typeof seatIndex === 'number') {
+                        // Already a number, ensure it's integer
+                        passenger.Seat.SeatIndex = Math.floor(seatIndex);
+                    }
+                    
+                    // Ensure SeatIndex is a valid positive integer
+                    if (isNaN(passenger.Seat.SeatIndex) || passenger.Seat.SeatIndex <= 0) {
+                        console.error('Invalid SeatIndex:', seatIndex);
+                        throw new Error('Invalid SeatIndex format. Expected format like "2-1" or integer.');
+                    }
+                }
+            });
+        }
+        
+        // Validate boarding and dropping point IDs
+        if (!requestData.BoardingPointId || !requestData.DroppingPointId) {
+            throw new Error('Missing required fields: BoardingPointId, DroppingPointId');
+        }
+        
+        console.log("Sending book request:", requestData);
+        
         const apiResponse = await axios.post(
-            'https://BusBE.tektravels.com/Busservice.svc/rest/Book',
-            req.body,
+            'https://BusBE.tektravels.com/Busservice.svc/rest/Book', 
+            requestData,
             {
                 headers: {
                     'Content-Type': 'application/json'
@@ -400,11 +483,11 @@ exports.GetBook = async (req, res) => {
             // Check if booking was successful (ResponseStatus === 1 and no error)
             if (bookResult.ResponseStatus === 1 && 
                 (!bookResult.Error || bookResult.Error.ErrorCode === 0 || bookResult.Error.ErrorCode === undefined)) {
-                // console.log("Booking successful with BusId:", bookResult.BusId);
-                // console.log("Booking status:", bookResult.BusBookingStatus);
+                console.log("Booking successful with BusId:", bookResult.BusId);
+                console.log("Booking status:", bookResult.BusBookingStatus);
                 res.status(200).json(apiResponse.data);
             } else {
-                //          console.error("Booking failed:", bookResult.Error);
+                console.error("Booking failed:", bookResult.Error);
                 res.status(400).json({
                     message: bookResult.Error?.ErrorMessage || 'Booking failed',
                     errorCode: bookResult.Error?.ErrorCode
@@ -415,7 +498,7 @@ exports.GetBook = async (req, res) => {
         }
         
     } catch (error) {
-        // console.error('Error booking bus:', error);
+        console.error('Error in GetBook:', error);
         
         // Handle specific API errors
         if (error.response && error.response.data) {
