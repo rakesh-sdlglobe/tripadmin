@@ -4,5 +4,6 @@ const flightController = require("../controllers/flights");
 const isAuth = require("../middleware/isAuth");
 
 router.post("/getFlightsAirports", flightController.getFlightsAirports);
+router.post("/getFlightsList", flightController.getFlightsList);
 
 module.exports = router;
