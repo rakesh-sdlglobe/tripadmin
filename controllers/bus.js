@@ -520,18 +520,32 @@ exports.GetBook = async (req, res) => {
 exports.GetBookingDetails = async (req, res) => {
     console.log("1.Get booking details is working... ");
     console.log("1.Request body is working... ", req.body); // Better logging
-  
     
+    // Validate required parameters
+    const { EndUserIp, TokenId, TraceId, BusId, IsBaseCurrencyRequired } = req.body;
     
-   
+    if (!EndUserIp || !TokenId || !TraceId || !BusId) {
+        console.error("Missing required parameters:", { EndUserIp, TokenId, TraceId, BusId });
+        return res.status(400).json({ 
+            message: "Missing required parameters: EndUserIp, TokenId, TraceId, and BusId are required" 
+        });
+    }
     
-
-    console.log("Sending booking details request:", req.body);
+    // Prepare the request data
+    const requestData = {
+        EndUserIp,
+        TokenId,
+        TraceId,
+        BusId,
+        IsBaseCurrencyRequired: IsBaseCurrencyRequired !== undefined ? IsBaseCurrencyRequired : false
+    };
+    
+    console.log("Sending booking details request:", requestData);
 
     try {
         const apiResponse = await axios.post(
             'https://BusBE.tektravels.com/Busservice.svc/rest/GetBookingDetail',
-            req.body,
+            requestData,
             {
                 headers: {
                     'Content-Type': 'application/json'
