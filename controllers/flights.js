@@ -34,3 +34,17 @@ exports.getFlightsAirports = async (req, res) => {
     res.status(500).json({ error: "Internal server error" });
   }
 };
+
+exports.getFlightsList = async (req, res) => {
+  const Request = req.body;
+  Request.Credential = credentials;
+  try {
+    const response = await axios.post(
+      `${base_url}/SIGNIX/B2B/Flight/Search`,
+      Request
+    );
+    res.status(200).json(response.data);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
