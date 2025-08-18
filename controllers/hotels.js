@@ -25,14 +25,20 @@ const credentials = {
 
 exports.getHotelCities = async (req, res) => {
   const { input } = req.body;
-  console.log('ENV:', process.env);
   try {
     const response = await axios.post(`${base_url}/SIGNIX/B2B/StaticData/AC`, {
       Credential: credentials,
       AcType: "CityHotel",
       SearchText: input || "",
       AllData: input ? true : false,
-    });
+    }, {
+  headers: {
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36",
+    "Accept": "application/json, text/plain, */*",
+    "Accept-Language": "en-US,en;q=0.9",
+    "Content-Type": "application/json"
+  }                       
+   );
 
     res.status(200).json(response.data);
   } catch (error) {
