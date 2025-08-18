@@ -35,7 +35,7 @@ exports.getHotelCities = async (req, res) => {
 
     res.status(200).json(response.data);
   } catch (error) {
-    console.error("Error fetching hotel cities:", error.message);
+    console.error("Error fetching hotel cities:", error.response?.data || error.message);
     res.status(500).json({ error: "Internal server error" });
   }
 };
