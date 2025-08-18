@@ -25,6 +25,7 @@ const credentials = {
 
 exports.getHotelCities = async (req, res) => {
   const { input } = req.body;
+  console.log('ENV:', process.env);
   try {
     const response = await axios.post(`${base_url}/SIGNIX/B2B/StaticData/AC`, {
       Credential: credentials,
