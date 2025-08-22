@@ -14,7 +14,7 @@ const otpRoutes = require('./routes/otpRoutes');
 const hotelRoutes = require('./routes/hotelsRoute');
 const flightRoutes = require('./routes/flightsRoutes');
 const busRoutes = require('./routes/busRoutes');
-
+const insuranceRoutes = require('./routes/insuranceRoute');
 const app = express();
 
 // Middleware setup
@@ -60,6 +60,7 @@ app.use('/api/bus', busRoutes);
 app.use('/api', emailRoutes);
 app.use('/api/password', passwordRoutes);
 app.use('/api/otp', otpRoutes);
+app.use('/api/insurance', insuranceRoutes);
 
 
 app.use('/api/uploads', express.static(path.join(__dirname, '/uploads')));
