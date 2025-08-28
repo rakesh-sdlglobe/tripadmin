@@ -173,3 +173,90 @@ exports.GetInsuranceList = async (req, res) => {
         });
     }
 }
+
+
+exports.GetInsuranceBook = async (req, res) => {
+    // console.log("Yes, calling the insurance API");
+    // console.log(req.body);
+    
+    const { 
+        EndUserIp,
+        TokenId,
+        TraceId,
+        GenerateInsurancePolicy,
+        ResultIndex,
+        Passenger,
+        PlanType, 
+        PlanCoverage, 
+        TravelStartDate,            
+    } = req.body;
+
+    // Validate required fields
+    if (!EndUserIp || !TokenId || !TraceId || !GenerateInsurancePolicy || !ResultIndex || !Passenger) {
+        return res.status(400).json({
+            success: false,
+            message: "Missing required fields: EndUserIp, TokenId, TraceId, GenerateInsurancePolicy, ResultIndex, Passenger are mandatory"
+        });
+    }
+
+    // Validate Passenger array structure
+    if (!Array.isArray(Passenger) || Passenger.length === 0) {
+        return res.status(400).json({
+            success: false,
+            message: "Passenger must be a non-empty array"
+        });
+    }
+
+    // Validate each passenger has required fields
+    for (let i = 0; i < Passenger.length; i++) {
+        const passenger = Passenger[i];
+        const requiredFields = [
+            'Title', 'FirstName', 'LastName', 'BeneficiaryTitle', 'BeneficiaryName', 
+            'RelationShipToInsured', 'RelationToBeneficiary', 'Gender', 'Sex', 'DOB', 
+            'PassportCountry', 'PhoneNumber', 'EmailId', 'AddressLine1', 
+            'AddressLine2', 'CityCode', 'CountryCode', 'MajorDestination', 'PinCode'
+        ];
+        
+        const missingFields = requiredFields.filter(field => !passenger[field]);
+        if (missingFields.length > 0) {
+            return res.status(400).json({
+                success: false,
+                message: `Passenger ${i + 1} is missing required fields: ${missingFields.join(', ')}`
+            });
+        }
+    }
+
+    const data = {
+        EndUserIp,
+        TokenId,
+        TraceId,
+        GenerateInsurancePolicy,
+        ResultIndex,
+        Passenger
+    }
+
+    console.log("Insurance book data:", data);
+
+    try {
+        const apiResponse = await axios.post(
+            `${base_url}/Book`,
+            data,
+            {
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            }
+        );
+
+        console.log("Insurance book API response received");
+
+        return res.status(200).json(apiResponse.data);
+    } catch (error) {
+        console.error('Error in GetInsuranceBook:', error.message);
+        return res.status(500).json({
+            success: false,
+            message: 'Error booking insurance',
+            error: error.message
+        });
+    }
+} 
