@@ -37,12 +37,35 @@ exports.getFlightsAirports = async (req, res) => {
 
 exports.getFlightsList = async (req, res) => {
   const Request = req.body;
+  console.log("this request",Request);
+  
   Request.Credential = credentials;
   try {
     const response = await axios.post(
       `${base_url}/SIGNIX/B2B/Flight/Search`,
       Request
     );
+    console.log("this response ",response.data);
+    
+    res.status(200).json(response.data);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+
+exports.getFlightPriceValidate = async (req, res) => {
+  const Request = req.body;
+  console.log("this request",Request);
+  
+  Request.Credential = credentials;
+  try {
+    const response = await axios.post(
+      `${base_url}/SIGNIX/B2B/PriceValidation`,
+      Request
+    );
+    console.log("this /SIGNIX/B2B/PriceValidation ",response.data);
+    
     res.status(200).json(response.data);
   } catch (error) {
     res.status(500).json({ error: error.message });
