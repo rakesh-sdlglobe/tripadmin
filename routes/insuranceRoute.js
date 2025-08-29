@@ -7,5 +7,8 @@ const insuranceController = require('../controllers/insurance');
 router.post('/authenticateInsuranceAPI', insuranceController.authenticateInsuranceAPI);
 router.post('/GetInsuranceList', insuranceController.GetInsuranceList);
 router.post('/GetInsuranceBook', insuranceController.GetInsuranceBook);
+router.post('/GetInsurancePolicy', insuranceController.GetInsurancePolicy);
+router.post('/GetInsuranceBookingDetails', insuranceController.GetInsuranceBookingDetails);
+router.post('/CancelInsuranceBooking', insuranceController.CancelInsuranceBooking)
 
 module.exports = router;

@@ -1,6 +1,8 @@
 const { default: axios } = require('axios');
 const os = require('os');
 
+
+ const base_url = "https://InsuranceBE.tektravels.com/InsuranceService.svc/rest";
 function getLocalIP() {
     const interfaces = os.networkInterfaces();
     for (const name in interfaces) {
@@ -14,7 +16,7 @@ function getLocalIP() {
 }
 
 exports.authenticateInsuranceAPI = async (req, res) => {
-    console.log("Yes, calling the insurance API");
+    // console.log("Yes, calling the insurance API");
     
     const data = {
         "UserName": process.env.INSURANCE_API_USERNAME,
@@ -52,8 +54,8 @@ exports.authenticateInsuranceAPI = async (req, res) => {
 }
 
 exports.GetInsuranceList = async (req, res) => {
-    console.log("Yes, calling the insurance API");
-    console.log(req.body);
+    // console.log("Yes, calling the insurance API");
+    // console.log(req.body);
     
     const { 
         PlanCategory, 
@@ -99,7 +101,7 @@ exports.GetInsuranceList = async (req, res) => {
     try {
         // Optimized axios request with timeout and performance settings
         const apiResponse = await axios.post(
-            'https://InsuranceBE.tektravels.com/InsuranceService.svc/rest/Search',
+            `${base_url}/Search`,
             data,
             {
                 headers: {
@@ -173,7 +175,6 @@ exports.GetInsuranceList = async (req, res) => {
         });
     }
 }
-
 
 exports.GetInsuranceBook = async (req, res) => {
     // console.log("Yes, calling the insurance API");
@@ -259,4 +260,192 @@ exports.GetInsuranceBook = async (req, res) => {
             error: error.message
         });
     }
-} 
+}   
+
+
+
+exports.GetInsurancePolicy = async (req, res) => {
+    // console.log("Yes, calling the insurance policy API");
+    // console.log(req.body);
+    
+    const { 
+        TokenId,
+        EndUserIp,
+        BookingId
+    } = req.body;
+
+    // Validate required fields
+    if (!TokenId || !EndUserIp || !BookingId) {
+        return res.status(400).json({
+            success: false,
+            message: "Missing required fields: TokenId, EndUserIp, and BookingId are mandatory"
+        });
+    }
+
+    const data = {
+        TokenId,
+        EndUserIp,
+        BookingId
+    }
+
+    console.log("Insurance policy data:", data);
+
+    try {
+        const apiResponse = await axios.post(
+            `${base_url}/GeneratePolicy`,
+            data,
+            {
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            }
+        );
+
+        console.log("Insurance policy API response received");
+
+        return res.status(200).json(apiResponse.data);
+    } catch (error) {
+        console.error('Error in GetInsurancePolicy:', error.message);
+        return res.status(500).json({
+            success: false,
+            message: 'Error retrieving insurance policy',
+            error: error.message
+        });
+    }
+}
+
+exports.GetInsuranceBookingDetails = async (req, res) => {
+    console.log("Yes, calling the insurance booking details API");
+    
+    const { 
+        TokenId,
+        EndUserIp,
+        BookingId
+    } = req.body;
+
+    // Validate required fields
+    if (!TokenId || !EndUserIp || !BookingId) {
+        return res.status(400).json({
+            success: false,
+            message: "Missing required fields: TokenId, EndUserIp, and BookingId are mandatory"
+        });
+    }
+
+    const data = {
+        TokenId,
+        EndUserIp,
+        BookingId
+    }
+
+    console.log("Insurance booking details data:", data);
+    
+    try {
+        const apiResponse = await axios.post(
+            `${base_url}/GetBookingDetail`,
+            data,
+            {
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            }
+        );
+
+        console.log("Insurance booking details API response received");
+
+        return res.status(200).json(apiResponse.data);
+    } catch (error) {
+        console.error('Error in GetInsuranceBookingDetails:', error.message);
+        
+        // Handle 404 errors specifically
+        if (error.response && error.response.status === 404) {
+            return res.status(404).json({
+                success: false,
+                message: 'Insurance booking details not found',
+                error: 'The requested booking details could not be found'
+            });
+        }
+        
+        return res.status(500).json({
+            success: false,
+            message: 'Error retrieving insurance booking details',
+            error: error.message
+        });
+    }
+}
+
+
+
+
+
+
+
+exports.CancelInsuranceBooking = async (req, res) => {
+    console.log("Yes, calling the insurance cancel booking API");
+    
+    const { 
+        TokenId,
+        EndUserIp,
+        BookingId,
+        RequestType,
+        Remarks
+    } = req.body;
+
+    // Validate required fields
+    if (!TokenId || !EndUserIp || !BookingId || !RequestType) {
+        return res.status(400).json({
+            success: false,
+            message: "Missing required fields: TokenId, EndUserIp, BookingId, and RequestType are mandatory"
+        });
+    }
+
+    const data = {
+        TokenId,
+        EndUserIp,
+        BookingId,
+        RequestType,
+        Remarks: Remarks || ""
+    }
+
+    console.log("Insurance cancel booking data:", data);
+    
+    try {
+        const apiResponse = await axios.post(
+            `${base_url}/SendChangeRequest`,
+            data,
+            {
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            }
+        );
+
+        console.log("Insurance cancel booking API response received");
+
+        return res.status(200).json(apiResponse.data);
+    } catch (error) {
+        console.error('Error in InsuraceCancelBooking:', error.message);
+        
+        // Handle specific error cases
+        if (error.response && error.response.status === 404) {
+            return res.status(404).json({
+                success: false,
+                message: 'Insurance booking not found',
+                error: 'The requested booking could not be found for cancellation'
+            });
+        }
+        
+        if (error.response && error.response.status === 400) {
+            return res.status(400).json({
+                success: false,
+                message: 'Invalid cancellation request',
+                error: error.response.data || 'The cancellation request is invalid'
+            });
+        }
+        
+        return res.status(500).json({
+            success: false,
+            message: 'Error cancelling insurance booking',
+            error: error.message
+        });
+    }
+}       
