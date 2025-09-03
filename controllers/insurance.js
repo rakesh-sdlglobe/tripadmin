@@ -179,12 +179,11 @@ exports.GetInsuranceList = async (req, res) => {
 exports.GetInsuranceBook = async (req, res) => {
     // console.log("Yes, calling the insurance API");
     // console.log(req.body);
-    
+    // const  GenerateInsurancePolicy=true
     const { 
         EndUserIp,
         TokenId,
         TraceId,
-        GenerateInsurancePolicy,
         ResultIndex,
         Passenger,
         PlanType, 
@@ -193,10 +192,10 @@ exports.GetInsuranceBook = async (req, res) => {
     } = req.body;
 
     // Validate required fields
-    if (!EndUserIp || !TokenId || !TraceId || !GenerateInsurancePolicy || !ResultIndex || !Passenger) {
+    if (!EndUserIp || !TokenId || !TraceId || !ResultIndex || !Passenger) {
         return res.status(400).json({
             success: false,
-            message: "Missing required fields: EndUserIp, TokenId, TraceId, GenerateInsurancePolicy, ResultIndex, Passenger are mandatory"
+            message: "Missing required fields: EndUserIp, TokenId, TraceId, ResultIndex, Passenger are mandatory"
         });
     }
 
@@ -231,7 +230,7 @@ exports.GetInsuranceBook = async (req, res) => {
         EndUserIp,
         TokenId,
         TraceId,
-        GenerateInsurancePolicy,
+        GenerateInsurancePolicy: true,
         ResultIndex,
         Passenger
     }
