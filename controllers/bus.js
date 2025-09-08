@@ -611,6 +611,27 @@ exports.createBusBooking = async (req, res) => {
             return value !== undefined && value !== null ? value : defaultValue;
         };
 
+        // Helper function to safely truncate passenger name
+        const safePassengerName = (firstName, lastName, maxLength = 55) => {
+            // Clean and normalize the input
+            const cleanFirstName = String(firstName || '').replace(/[^\w\s]/g, '').trim();
+            const cleanLastName = String(lastName || '').replace(/[^\w\s]/g, '').trim();
+            const fullName = `${cleanFirstName} ${cleanLastName}`.trim();
+            
+            // Ensure we don't exceed the database limit
+            if (fullName.length > maxLength) {
+                return fullName.substring(0, maxLength).trim();
+            }
+            return fullName;
+        };
+
+        // Helper function to safely truncate any string field
+        const safeTruncate = (value, maxLength = 255, defaultValue = '') => {
+            if (!value) return defaultValue;
+            const stringValue = String(value);
+            return stringValue.length > maxLength ? stringValue.substring(0, maxLength).trim() : stringValue;
+        };
+
         // Helper function to convert datetime format
         const convertToMySQLDateTime = (dateTimeString) => {
             if (!dateTimeString) return null;
@@ -919,22 +940,24 @@ exports.createBusBooking = async (req, res) => {
             const passengerValues = [
                 finalUserId, // Same user_id from users table
                 booking_id,
-                safeValue(`${traveler?.firstName || ''} ${traveler?.lastName || ''}`.trim(), ''),
+                safePassengerName(traveler?.firstName, traveler?.lastName),
                 safeValue(traveler?.age, 0),
                 formattedGender, // Fixed: Use formatted gender (single character)
-                safeValue(traveler?.idType),
-                safeValue(traveler?.idNumber),
+                safeTruncate(traveler?.idType, 50),
+                safeTruncate(traveler?.idNumber, 50),
                 safeValue(parsedContactDetails?.mobile, ''),
                 seatLabel,
                 safeValue(parsedFareDetails?.baseFare ? parsedFareDetails.baseFare / travelerKeys.length : 0),
                 isLeadPassenger,
-                safeValue(traveler?.title, ''),
-                isLeadPassenger ? safeValue(parsedContactDetails?.email) : null,
-                isLeadPassenger ? safeValue(parsedContactDetails?.mobile) : null,
-                isLeadPassenger ? safeValue(parsedAddressDetails?.address) : null
+                safeTruncate(traveler?.title, 20, ''),
+                isLeadPassenger ? safeTruncate(parsedContactDetails?.email, 100) : null,
+                isLeadPassenger ? safeTruncate(parsedContactDetails?.mobile, 20) : null,
+                isLeadPassenger ? safeTruncate(parsedAddressDetails?.address, 500) : null
             ];
 
             console.log(' Passenger', i + 1, 'values with user_id:', finalUserId);
+            console.log(' Passenger name:', `"${passengerValues[2]}"`);
+            console.log(' Passenger name length:', passengerValues[2]?.length || 0, 'characters');
             await connection.promise().execute(passengerQuery, passengerValues);
         }
 
