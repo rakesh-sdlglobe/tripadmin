@@ -15,6 +15,7 @@ const hotelRoutes = require('./routes/hotelsRoute');
 const flightRoutes = require('./routes/flightsRoutes');
 const busRoutes = require('./routes/busRoutes');
 const insuranceRoutes = require('./routes/insuranceRoute');
+// const transferRoutes = require('./routes/transferRoute');
 const app = express();
 
 // Middleware setup
@@ -61,10 +62,20 @@ app.use('/api', emailRoutes);
 app.use('/api/password', passwordRoutes);
 app.use('/api/otp', otpRoutes);
 app.use('/api/insurance', insuranceRoutes);
+// app.use('/api/transfer', transferRoutes);
 
 
 app.use('/api/uploads', express.static(path.join(__dirname, '/uploads')));
 
+// Test endpoint to verify server is working
+app.get('/api/test', (req, res) => {
+  console.log('🧪 Test endpoint called at:', new Date().toISOString());
+  res.json({ 
+    message: 'Server is working!', 
+    timestamp: new Date().toISOString(),
+    status: 'success'
+  });
+});
 
 // syncModels();
 
@@ -73,6 +84,7 @@ app.use((err, req, res, next) => {
   console.error(err.stack);
   res.status(500).send('Something broke!');
 });
+
 
 // Start server
 const PORT = 3002;
