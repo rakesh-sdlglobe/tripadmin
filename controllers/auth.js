@@ -216,13 +216,18 @@ exports.googleUserData = (req, res) => {
                     }
 
                     console.log('User inserted:', insertResults);
+                    
+                    const user1 = { user_id: insertResults.insertId, email };
+                    const accessToken = generateAccessToken(user1);
+                    
                     return res.status(201).json({
                         message: 'User created successfully',
-                        generateAccessToken,
+                        token: accessToken,
                         user: { 
                             user_id: insertResults.insertId,
                             ...userDataToSave,
                         },
+                        user1: user1,
                     });
                 }
             );

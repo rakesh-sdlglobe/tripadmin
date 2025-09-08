@@ -4,6 +4,7 @@ const nodemailer = require('nodemailer');
 const crypto = require('crypto');
 const db = require('../utils/database');
 const jwt = require('jsonwebtoken');
+const { generateAccessToken } = require('./genTokens');
 
 const otpStorage = {}; // In-memory storage for OTPs
 
@@ -113,32 +114,50 @@ exports.verifyOtp = (req, res) => {
     delete otpStorage[email]; // Clear OTP after successful verification
 
     // Check if the email exists in the database
-    db.query('SELECT user_id, email FROM users WHERE email = ?', [email], (err, results) => {
+    db.query('SELECT user_id, email, firstName FROM users WHERE email = ?', [email], (err, results) => {
       if (err) {
         console.error('Database error:', err);
         return res.status(500).send('Internal server error');
       }
 
       if (results.length > 0) {
-        // Email exists, update isEmailVerified to 1
+        // Email exists, update isEmailVerified to 1 and firstName if it's null
         const user = results[0];
-        db.query('UPDATE users SET isEmailVerified = 1 WHERE email = ?', [email], (updateErr) => {
+        
+        // Extract firstName from email if user's firstName is null or empty
+        const emailParts = email.split('@');
+        const extractedFirstName = emailParts[0] || '';
+        const finalFirstName = user.firstName || extractedFirstName;
+        
+        // Update both isEmailVerified and firstName if needed
+        const updateQuery = user.firstName ? 
+          'UPDATE users SET isEmailVerified = 1 WHERE email = ?' :
+          'UPDATE users SET isEmailVerified = 1, firstName = ? WHERE email = ?';
+        const updateParams = user.firstName ? [email] : [extractedFirstName, email];
+        
+        db.query(updateQuery, updateParams, (updateErr) => {
           if (updateErr) {
             console.error('Error updating verification status:', updateErr);
             return res.status(500).send('Internal server error');
           }
 
           // Generate a token and return it
-          const token = jwt.sign({ user_id: user.user_id }, process.env.SECRET, { expiresIn: '7d' });
+          const userForToken = { user_id: user.user_id, email: user.email };
+          const token = generateAccessToken(userForToken);
+          const user1 = { user_id: user.user_id, email: user.email };
           return res.json({
             token,
             user: email,
+            firstName: finalFirstName,
+            user1: user1,
             // expiresIn: 3600,
           });
         });
       } else {
         // Email does not exist, create a new user
-        const firstName = '';
+        // Extract firstName from email (part before @)
+        const emailParts = email.split('@');
+        const firstName = emailParts[0] || '';
         const middleName = '';
         const lastName = '';
         const password = ''; // Optional
@@ -155,10 +174,14 @@ exports.verifyOtp = (req, res) => {
             const newUserId = insertResults.insertId;
 
             // Generate a token and return it
-            const token = jwt.sign({ user_id: newUserId }, process.env.SECRET, { expiresIn: '7d' });
+            const userForToken = { user_id: newUserId, email: email };
+            const token = generateAccessToken(userForToken);
+            const user1 = { user_id: newUserId, email: email };
             return res.json({
               token,
               user: email,
+              firstName: firstName,
+              user1: user1,
               // expiresIn: 3600,
             });
           }

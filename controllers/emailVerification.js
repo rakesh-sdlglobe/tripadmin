@@ -70,14 +70,18 @@ exports.verifyEmailOtp = (req, res) => {
   // OTP is valid, remove it
   delete otpStorage[email];
 
+  // Extract firstName from email
+  const emailParts = email.split('@');
+  const extractedFirstName = emailParts[0] || '';
+
   // Insert user into DB (or ignore if exists)
   const insertUserQuery = `
-    INSERT INTO users (email, isEmailVerified)
-    VALUES (?,  1)
-    ON DUPLICATE KEY UPDATE isEmailVerified = 1
+    INSERT INTO users (email, firstName, isEmailVerified)
+    VALUES (?, ?, 1)
+    ON DUPLICATE KEY UPDATE isEmailVerified = 1, firstName = COALESCE(firstName, ?)
   `;
 
-  db.query(insertUserQuery, [email], (err, result) => {
+  db.query(insertUserQuery, [email, extractedFirstName, extractedFirstName], (err, result) => {
     if (err) {
       console.error("Error inserting user:", err);
       return res.status(500).send("Error processing user record");
@@ -96,6 +100,7 @@ exports.verifyEmailOtp = (req, res) => {
 
       // Generate tokens
       const accessToken = generateAccessToken(user);
+      const user1 = { user_id: user.id, email: user.email };
       // const refreshToken = generateRefreshToken(user);
       console.log("Access Token:", accessToken);
       console.log("user from 99 email, ", user);
@@ -103,8 +108,9 @@ exports.verifyEmailOtp = (req, res) => {
 
       res.status(200).json({
         email,
-        firstName: user.firstName,
+        firstName: user.firstName || extractedFirstName,
         token: accessToken,
+        user1: user1,
       });
       
       // Store refresh token in DB
