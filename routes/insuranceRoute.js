@@ -9,6 +9,14 @@ router.post('/GetInsuranceList', insuranceController.GetInsuranceList);
 router.post('/GetInsuranceBook', insuranceController.GetInsuranceBook);
 router.post('/GetInsurancePolicy', insuranceController.GetInsurancePolicy);
 router.post('/GetInsuranceBookingDetails', insuranceController.GetInsuranceBookingDetails);
-router.post('/CancelInsuranceBooking', insuranceController.CancelInsuranceBooking)
+router.post('/CancelInsuranceBooking', insuranceController.CancelInsuranceBooking);
+
+// Database routes - NO AUTHENTICATION (same as bus routes)
+router.post('/createInsuranceBooking', insuranceController.createInsuranceBooking);
+router.get('/userBookings/:user_id', insuranceController.getUserInsuranceBookings);
+router.get('/bookingDetails/:booking_id', insuranceController.getInsuranceBookingDetails);
+router.put('/updateBookingStatus/:booking_id', insuranceController.updateInsuranceBookingStatus);
+router.put('/cancelBooking/:booking_id', insuranceController.cancelInsuranceBooking);
+router.get('/bookingStats/:user_id', insuranceController.getInsuranceBookingStats);
 
 module.exports = router;
