@@ -116,9 +116,25 @@ exports.GetDestinationSearch = async (req, res) => {
                 }
             }
         );
-        res.status(200).json(apiResponse.data);
+
+        console.log("apiResponse",apiResponse.data);
+        // Transform the response to the desired format
+        if (apiResponse.data?.Destinations) {
+            const destinations = apiResponse.data.Destinations;
+                        
+            const transformedDestinations = destinations.map(destination => ({
+                CityId: destination.DestinationId,
+                CityNamewithCountry: `${destination.CityName},${destination.CountryName}`,
+                CountryCode: destination.CountryCode
+            }));
+            console.log("transformedDestinations",transformedDestinations);
+            res.status(200).json({
+                success: true,
+                destinations: transformedDestinations
+            });
+        }  
     } catch (error) {
         res.status(500).json({ message: error.message });
         
     }
-} 
+}
