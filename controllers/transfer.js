@@ -88,3 +88,37 @@ exports.getTransferCountryList = async (req, res) => {
         res.status(500).json({ message: error.message });
     }
 }
+
+
+exports.GetDestinationSearch = async (req, res) => {
+    console.log("req.body",req.body);
+    console.log("Yes, calling the transfer API");
+    let {TokenId,EndUserIp,CountryCode}=req.body;
+    if(!TokenId || !EndUserIp || !CountryCode){
+        return res.status(400).json({
+            success: false,
+            message: "TokenId, EndUserIp and CountryCode are required"
+        });
+    }
+    
+    const data = {
+        "TokenId": TokenId,
+        "EndUserIp": EndUserIp,
+        "CountryCode": CountryCode,
+    }
+    try {
+        const apiResponse = await axios.post(
+            `${base_url_transfer}GetDestinationSearchStaticData`,
+            data,
+            {
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            }
+        );
+        res.status(200).json(apiResponse.data);
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+        
+    }
+} 
