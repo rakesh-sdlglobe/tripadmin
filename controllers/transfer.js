@@ -138,3 +138,36 @@ exports.GetDestinationSearch = async (req, res) => {
         
     }
 }
+
+exports.GetTransferStaticData= async (req, res) => {
+    console.log("Yes, calling the transfer API");
+    let {TokenId,EndUserIp,CityId,TransferCategoryType}=req.body;
+    if(!TokenId || !EndUserIp || !CityId || !TransferCategoryType){
+        return res.status(400).json({
+            success: false,
+            message: `${TokenId}, ${EndUserIp}, ${CityId}, ${TransferCategoryType} are required`
+        });
+    }
+    
+    const data = {
+        "TokenId": TokenId,
+        "EndUserIp": EndUserIp,
+        "CItyId": CityId,
+        "TransferCategoryType":TransferCategoryType,
+        "ClientId":process.env.TRANSFER_API_CLIENT_ID
+    }
+    try {
+        const apiResponse = await axios.post(
+            `${base_url_transfer}GetTransferStaticData`,
+            data,
+            {
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            }
+        );
+        res.status(200).json(apiResponse.data);
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+}
