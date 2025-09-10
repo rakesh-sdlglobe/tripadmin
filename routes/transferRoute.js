@@ -6,5 +6,6 @@ router.post('/authenticateTransferAPI', transferController.authenticateTransferA
 router.post('/getTransferCountryList', transferController.getTransferCountryList);
 router.post('/GetDestinationSearch', transferController.GetDestinationSearch);
 router.post('/GetTransferStaticData', transferController.GetTransferStaticData);
+router.post('/GetSearchTransfer', transferController.GetSearchTransfer);
 
 module.exports = router;

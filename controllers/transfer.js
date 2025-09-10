@@ -171,3 +171,57 @@ exports.GetTransferStaticData= async (req, res) => {
         res.status(500).json({ message: error.message });
     }
 }
+
+exports.GetSearchTransfer= async (req, res) => {
+    const PreferredCurrency="INR";
+    const IsBaseCurrencyRequired=true;
+    console.log("Yes, calling the transfer API");
+    // Validate required fields
+    const requiredFields = [
+        'TokenId', 'EndUserIp', 'CountryCode', 'CityId', 
+        'PickUpCode', 'PickUpPointCode', 'DropOffCode', 'DropOffPointCode',
+        'TransferTime', 'TransferDate', 'AdultCount'
+    ];
+    
+    const missingFields = requiredFields.filter(field => !req.body[field]);
+    if (missingFields.length > 0) {
+        return res.status(400).json({
+            success: false,
+            message: `Missing required fields: ${missingFields.join(', ')}`
+        });
+    }
+
+    
+    const data = {
+        "TokenId": req.body.TokenId,
+        "EndUserIp": req.body.EndUserIp,
+        "CountryCode": req.body.CountryCode,
+        "CityId": req.body.CityId,
+        "PickUpCode": req.body.PickUpCode,
+        "PickUpPointCode": req.body.PickUpPointCode,
+        "DropOffCode": req.body.DropOffCode,
+        "DropOffPointCode": req.body.DropOffPointCode,
+        "TransferTime": req.body.TransferTime,
+        "TransferDate": req.body.TransferDate,
+        "AdultCount": req.body.AdultCount,
+        "PreferredCurrency": PreferredCurrency,
+        "PreferredLanguage": req.body.PreferredLanguage ,
+        "AlternateLanguage": req.body.AlternateLanguage ,
+        "IsBaseCurrencyRequired": IsBaseCurrencyRequired
+    }
+    
+    try {
+        const apiResponse = await axios.post(
+            `${base_url}Search`,
+            data,
+            {
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            }
+        );
+        res.status(200).json(apiResponse.data);
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+}
