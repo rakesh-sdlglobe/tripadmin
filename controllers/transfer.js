@@ -260,3 +260,122 @@ exports.GetSearchTransfer = async (req, res) => {
         res.status(500).json({ message: error.message });
     }
 }
+
+
+exports.GetBookingTransfer = async (req, res) => {
+    console.log("Yes, calling the transfer API");
+    console.log("Request body:", req.body);
+    
+    // Extract required fields from request body
+    const {
+        TokenId,
+        EndUserIp,
+        IsVoucherBooking,
+        NumOfPax,
+        PaxInfo,
+        PickUp,
+        DropOff,
+        Vehicles,
+        ResultIndex,
+        TransferCode,
+        VehicleIndex,
+        BookingMode,
+        OccupiedPax,
+        TraceId
+    } = req.body;
+
+    // Validate required fields
+    // const requiredFields = ['TokenId', 'EndUserIp', 'TransferCode', 'VehicleIndex'];
+    // const missingFields = requiredFields.filter(field => !req.body[field]);
+    
+    // if (missingFields.length > 0) {
+    //     return res.status(400).json({
+    //         success: false,
+    //         message: `Missing required fields: ${missingFields.join(', ')}`
+    //     });
+    // }
+
+    const data = {
+        "IsVoucherBooking": IsVoucherBooking || false,
+        "NumOfPax": NumOfPax ,
+        "PaxInfo": PaxInfo ,
+        "PickUp": PickUp,
+        "DropOff": DropOff,
+        "Vehicles": Vehicles ,
+        "ResultIndex": ResultIndex ,
+        "TransferCode": TransferCode,
+        "VehicleIndex": VehicleIndex,
+        "BookingMode": BookingMode ,
+        "OccupiedPax": OccupiedPax ,
+        "EndUserIp": EndUserIp,
+        "TokenId": TokenId,
+        "TraceId": TraceId
+    };
+    
+    try {
+        const apiResponse = await axios.post(
+            `${base_url}Book`,
+            data,
+            {
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            }
+        );
+        res.status(200).json(apiResponse.data);
+    } catch (error) {
+        console.error('Error in GetBookingTransfer:', error.response?.data || error.message);
+        res.status(500).json({ 
+            success: false,
+            message: error.response?.data?.message || error.message 
+        });
+    }
+}
+
+exports.GetBookingDetail = async (req, res) => {
+    try {
+        const { TokenId, EndUserIp, BookingId, AgencyId } = req.body;
+
+        // Validate required fields
+        const requiredFields = ['TokenId', 'EndUserIp', 'BookingId', 'AgencyId'];
+        const missingFields = requiredFields.filter(field => !req.body[field]);
+        
+        if (missingFields.length > 0) {
+            return res.status(400).json({
+                success: false,
+                message: `Missing required fields: ${missingFields.join(', ')}`
+            });
+        }
+
+        const data = {
+            "EndUserIp": EndUserIp,
+            "TokenId": TokenId,
+            "BookingId": BookingId,
+            "AgencyId": AgencyId
+        };
+
+        const apiResponse = await axios.post(
+            `${base_url}GetBookingDetail`,
+            data,
+            {
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            }
+        );
+        
+        res.status(200).json(apiResponse.data);
+    } catch (error) {
+        console.error('Error in GetBookingDetail:', error.response?.data || error.message);
+        res.status(500).json({ 
+            success: false,
+            message: error.response?.data?.message || error.message 
+        });
+    }
+}
+
+
+
+
+
+
