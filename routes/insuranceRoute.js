@@ -19,4 +19,7 @@ router.put('/updateBookingStatus/:booking_id', insuranceController.updateInsuran
 router.put('/cancelBooking/:booking_id', insuranceController.cancelInsuranceBooking);
 router.get('/bookingStats/:user_id', insuranceController.getInsuranceBookingStats);
 
+// Email selected quotes
+router.post('/sendSelectedQuotes', insuranceController.sendSelectedQuotes);
+
 module.exports = router;

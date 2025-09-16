@@ -1,6 +1,7 @@
 const { default: axios } = require('axios');
 const os = require('os');
 const connection = require('../utils/database');
+const nodemailer = require('nodemailer');
 
 const base_url = "https://InsuranceBE.tektravels.com/InsuranceService.svc/rest";
 
@@ -1026,4 +1027,362 @@ exports.getInsuranceBookingStats = async (req, res) => {
         res.status(500).json({ message: error.message });
     }
 };
+
+// Send selected insurance quotes via email
+exports.sendSelectedQuotes = async (req, res) => {
+    try {
+        const { user_id, selectedPlans, searchCriteria, emailData } = req.body;
+
+        // Validate required fields
+        if (!user_id || !selectedPlans || !Array.isArray(selectedPlans) || selectedPlans.length === 0) {
+            return res.status(400).json({
+                success: false,
+                message: 'User ID and selected plans are required'
+            });
+        }
+
+        // Validate email data
+        if (!emailData || !emailData.toEmail) {
+            return res.status(400).json({
+                success: false,
+                message: 'Email address is required'
+            });
+        }
+
+        // Get user details
+        const userQuery = 'SELECT firstName, lastName, email FROM users WHERE user_id = ?';
+        const [users] = await connection.promise().execute(userQuery, [user_id]);
+        
+        if (users.length === 0) {
+            return res.status(404).json({
+                success: false,
+                message: 'User not found'
+            });
+        }
+
+        const user = users[0];
+
+        // Configure Nodemailer transporter
+        const transporter = nodemailer.createTransport({
+            service: 'gmail',
+            auth: {
+                user: process.env.EMAIL_USER,
+                pass: process.env.EMAIL_PASS,
+            },
+        });
+
+        // Verify transporter configuration
+        try {
+            await transporter.verify();
+            console.log('Email transporter verified successfully');
+        } catch (verifyError) {
+            console.error('Email transporter verification failed:', verifyError);
+            return res.status(500).json({
+                success: false,
+                message: 'Email service configuration error',
+                error: verifyError.message
+            });
+        }
+
+        // Create HTML email content
+        const createEmailHTML = (plans, searchCriteria, userName) => {
+            const planTypeText = searchCriteria.planType === 1 ? 'Single Trip' : 'Annual Multi Trip';
+            const coverageText = searchCriteria.planCoverage === 1 ? 'US' :
+                               searchCriteria.planCoverage === 2 ? 'Non-US' :
+                               searchCriteria.planCoverage === 3 ? 'WorldWide' :
+                               searchCriteria.planCoverage === 4 ? 'India' :
+                               searchCriteria.planCoverage === 5 ? 'Asia' :
+                               searchCriteria.planCoverage === 6 ? 'Canada' :
+                               searchCriteria.planCoverage === 7 ? 'Australia' :
+                               searchCriteria.planCoverage === 8 ? 'Schenegen Countries' : 'Unknown';
+
+            let plansHTML = '';
+            plans.forEach((plan, index) => {
+                const price = plan.Price?.OfferedPriceRoundedOff || plan.Price?.OfferedPrice || 'N/A';
+                plansHTML += `
+                    <div class="plan-card">
+                        <h3 class="plan-title">${plan.PlanName}</h3>
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                            <div>
+                                <p style="margin: 8px 0; color: #666; font-size: 16px;"><strong><i class="fas fa-file-alt"></i> ${planTypeText}</strong> • <i class="fas fa-globe"></i> ${coverageText} Coverage</p>
+                                <p style="margin: 8px 0; color: #666; font-size: 14px;"><i class="fas fa-calendar-alt"></i> Duration: ${searchCriteria.duration || 1} Day(s)</p>
+                                <p style="margin: 8px 0; color: #666; font-size: 14px;"><i class="fas fa-users"></i> Passengers: ${searchCriteria.passengerCount || 1}</p>
+                            </div>
+                            <div style="text-align: right;">
+                                <div class="price-highlight"><i class="fas fa-rupee-sign"></i>${price}</div>
+                                <div style="color: #28a745; font-size: 14px; font-weight: 600;"><i class="fas fa-star"></i> Best Price</div>
+                            </div>
+                        </div>
+                        <div style="border-top: 2px solid #e9ecef; padding-top: 15px; text-align: center; background-color: #f8f9fa; border-radius: 6px; padding: 15px;">
+                            <p style="color: #dc3545; margin: 0; font-size: 14px; font-weight: 500;">
+                                <i class="fas fa-info-circle"></i> For detailed coverage information, price breakdown, and policy documents, 
+                                please visit our website and search for this plan again.
+                            </p>
+                        </div>
+                    </div>
+                `;
+            });
+
+            return `
+                <!DOCTYPE html>
+                <html>
+                <head>
+                    <meta charset="utf-8">
+                    <title>Selected Insurance Quotes - SeeMyTrip</title>
+                    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+                    <style>
+                        body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; margin: 0; padding: 0; }
+                        .container { max-width: 800px; margin: 0 auto; padding: 0; }
+                        table { border-collapse: collapse; }
+                        .logo-container { display: table; margin: 0 auto; }
+                        .suitcase, .logo-text { display: table-cell; vertical-align: middle; }
+                        .header { 
+                            background-color: white; 
+                            color: white; 
+                            padding: 30px 20px; 
+                            text-align: center;
+                            border-radius: 8px 8px 0 0;
+                        }
+                        .logo-section {
+                            margin-bottom: 20px;
+                        }
+                        .logo-container {
+                            display: flex;
+                            align-items: center;
+                            justify-content: center;
+                            gap: 6px;
+                            margin-bottom: 10px;
+                        }
+                        .suitcase {
+                            background-color: white;
+                            color: white;
+                            padding: 15px 20px;
+                            border-radius: 8px;
+                            font-weight: bold;
+                            font-size: 40px;
+                            position: relative;
+                            display: inline-block;
+                            line-height: 1;
+                            text-shadow: 1px 1px 2px rgba(0,0,0,0.5);
+                            border: 2px solid #ffffff;
+                            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+                        }
+                        .suitcase::before {
+                            content: '';
+                            position: absolute;
+                            top: -5px;
+                            left: 50%;
+                            transform: translateX(-50%);
+                            width: 20px;
+                            height: 5px;
+                            background-color: #dc3545;
+                            border-radius: 3px;
+                        }
+                        .logo-text {
+                            font-size: 48px;
+                            font-weight: bold;
+                            margin: 0;
+                            color: black;
+                            line-height: 1;
+                            text-shadow: 1px 1px 2px rgba(0,0,0,0.5);
+                        }
+                        .airplane-dot {
+                            position: relative;
+                            display: inline-block;
+                            margin: 0 1px;
+                            vertical-align: middle;
+                        }
+                        .airplane-dot::before {
+                            content: '✈';
+                            color: white;
+                            font-size: 32px;
+                            line-height: 1;
+                            display: inline-block;
+                        }
+                        .airplane-dot::after {
+                            content: '';
+                            position: absolute;
+                            top: -6px;
+                            right: 0px;
+                            width: 10px;
+                            height: 10px;
+                            background-color: #28a745;
+                            border-radius: 50%;
+                        }
+                        .tagline {
+                            font-size: 16px;
+                            margin: 8px 0 0 0;
+                            opacity: 0.9;
+                        }
+                        .content { background-color: white; padding: 30px; border: 1px solid #dee2e6; }
+                        .footer { 
+                            background-color:white; 
+                            padding: 25px 20px; 
+                            border-radius: 0 0 8px 8px; 
+                            text-align: center; 
+                            color: black; 
+                            border-top: 3px solid #c82333;
+                        }
+                        .search-summary { 
+                            background: white; 
+                            padding: 20px; 
+                            border-radius: 8px; 
+                            margin-bottom: 25px; 
+                            border-left: 4px solid #dc3545;
+                        }
+                        .plan-card {
+                            border: 2px solid #dc3545; 
+                            border-radius: 12px; 
+                            padding: 25px; 
+                            margin-bottom: 20px; 
+                            background: linear-gradient(135deg, #f8f9fa 0%, #ffffff 100%);
+                            box-shadow: 0 4px 6px rgba(220,53,69,0.1);
+                        }
+                        .plan-title {
+                            color: #dc3545; 
+                            margin-top: 0; 
+                            font-size: 22px;
+                            font-weight: bold;
+                        }
+                        .price-highlight {
+                            font-size: 28px; 
+                            font-weight: bold; 
+                            color: #28a745;
+                            text-shadow: 1px 1px 2px rgba(0,0,0,0.1);
+                        }
+                        .next-steps {
+                            background: linear-gradient(135deg, #d4edda 0%, #c3e6cb 100%);
+                            border: 1px solid #c3e6cb; 
+                            border-radius: 8px; 
+                            padding: 20px; 
+                            margin-top: 25px;
+                        }
+                        .company-info {
+                            margin-top: 15px;
+                            padding-top: 15px;
+                            border-top: 1px solid #dee2e6;
+                        }
+                    </style>
+                </head>
+                <body>
+                    <div class="container">
+                        <div class="header">
+                            <div class="logo-section">
+                               
+                                <div style="margin: 15px 0; text-align: center;">
+                                    <img src="cid:train-image" alt="SeeMyTrip Train" style="max-width: 250px; height: 120px; opacity: 0.9;">
+                                </div>
+                                <p class="tagline"><i class="fas fa-handshake"></i> Your Trusted Travel Partner</p>
+                            </div>
+                            <h2 style="margin: 20px 0 10px 0; font-size: 24px; font-weight: 600; text-align: center;"><i class="fas fa-shield-alt"></i> Your Selected Insurance Quotes</h2>
+                            <p style="margin: 0; font-size: 16px; opacity: 0.9; text-align: center;"><i class="fas fa-umbrella"></i> Travel Insurance Solutions</p>
+                        </div>
+                        
+                        <div class="content">
+                            <p>Dear ${userName},</p>
+                            
+                            <p>Thank you for using SeeMyTrip! Here are your selected insurance quotes as requested:</p>
+                            
+                            <div class="search-summary">
+                                <h3 style="margin-top: 0; color: #dc3545; font-size: 20px; font-weight: bold;"><i class="fas fa-search"></i> Search Summary</h3>
+                                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 15px;">
+                                    <p style="margin: 8px 0; color: #333;"><strong><i class="fas fa-file-alt"></i> Plan Type:</strong> ${planTypeText}</p>
+                                    <p style="margin: 8px 0; color: #333;"><strong><i class="fas fa-globe"></i> Coverage:</strong> ${coverageText}</p>
+                                    <p style="margin: 8px 0; color: #333;"><strong><i class="fas fa-calendar-alt"></i> Travel Dates:</strong> ${searchCriteria.departDate ? new Date(searchCriteria.departDate).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : 'N/A'} - ${searchCriteria.returnDate ? new Date(searchCriteria.returnDate).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : 'N/A'}</p>
+                                    <p style="margin: 8px 0; color: #333;"><strong><i class="fas fa-clock"></i> Duration:</strong> ${searchCriteria.duration || 1} Day(s)</p>
+                                    <p style="margin: 8px 0; color: #333;"><strong><i class="fas fa-users"></i> Passengers:</strong> ${searchCriteria.passengerCount || 1}</p>
+                                    <p style="margin: 8px 0; color: #333;"><strong><i class="fas fa-birthday-cake"></i> Ages:</strong> ${searchCriteria.passengerAges?.join(', ') || '25'} Years Old</p>
+                                </div>
+                            </div>
+                            
+                            <h3 style="color: #dc3545; font-size: 22px; margin-bottom: 20px;"><i class="fas fa-shield-alt"></i> Selected Insurance Plans (${plans.length})</h3>
+                            ${plansHTML}
+                            
+                            <div class="next-steps">
+                                <h4 style="color: #155724; margin-top: 0; font-size: 18px; font-weight: bold;">📋 Next Steps</h4>
+                                <ul style="color: #155724; margin-bottom: 0; padding-left: 20px;">
+                                    <li style="margin-bottom: 8px;">Review the selected insurance plans above</li>
+                                    <li style="margin-bottom: 8px;">Visit our website to see detailed coverage information</li>
+                                    <li style="margin-bottom: 8px;">Compare prices and benefits to choose the best plan</li>
+                                    <li style="margin-bottom: 8px;">Contact us if you need any assistance</li>
+                                </ul>
+                            </div>
+                        </div>
+                        
+                        <div class="footer">
+                            <div style="margin-bottom: 15px;">
+                                
+                                <div style="margin: 10px 0; text-align: center;">
+                                    <img src="cid:train-image" alt="SeeMyTrip Train" style="max-width: 200px; height: 120px; opacity: 0.9;">
+                                </div>
+                                <p style="margin: 0; font-size: 16px; font-weight: 600; color: white; text-align: center;">Your Trusted Travel Partner</p>
+                            </div>
+                            <div class="company-info">
+                                <p style="margin: 8px 0; color: white; font-size: 14px;">📧 For any queries, contact us at <strong>support@seemytrip.com</strong></p>
+                                <p style="margin: 8px 0; color: white; font-size: 14px;">🌐 Visit us at <strong>www.seemytrip.com</strong></p>
+                                <p style="margin: 8px 0; color: rgba(255,255,255,0.8); font-size: 12px;">This email was sent because you requested insurance quotes on our platform.</p>
+                            </div>
+                        </div>
+                    </div>
+                </body>
+                </html>
+            `;
+        };
+
+        // Create email content
+        const emailHTML = createEmailHTML(selectedPlans, searchCriteria, `${user.firstName} ${user.lastName}`);
+
+        // Use the email address from UI, fallback to user's email
+        const recipientEmail = emailData.toEmail || user.email;
+        const emailSubject = emailData.subject || `Your Selected Insurance Quotes - SeeMyTrip (${selectedPlans.length} Plans)`;
+        const additionalMessage = emailData.message ? `\n\nAdditional Message:\n${emailData.message}\n` : '';
+
+        // Email options
+        const mailOptions = {
+            from: process.env.EMAIL_USER,
+            to: recipientEmail,
+            subject: emailSubject,
+            html: emailHTML,
+            text: `Dear ${user.firstName},\n\nThank you for using SeeMyTrip! Here are your selected insurance quotes:\n\n${selectedPlans.map(plan => `${plan.PlanName} - ₹${plan.Price?.OfferedPriceRoundedOff || plan.Price?.OfferedPrice || 'N/A'}`).join('\n')}${additionalMessage}\n\nPlease visit our website to view detailed information and proceed with booking.\n\nBest regards,\nSeeMyTrip Team`,
+            attachments: [
+                {
+                    filename: 'train-4.png',
+                    path: './uploads/train-4 (1).png',
+                    cid: 'train-image'
+                }
+            ]
+        };
+
+        // Send email with error handling
+        try {
+            await transporter.sendMail(mailOptions);
+            
+            res.status(200).json({
+                success: true,
+                message: `Selected insurance quotes sent successfully to ${recipientEmail}`,
+                plansCount: selectedPlans.length,
+                recipientEmail: recipientEmail
+            });
+        } catch (emailError) {
+            console.error('Detailed email error:', emailError);
+            
+            res.status(500).json({
+                success: false,
+                message: 'Failed to send email. Please try again later.',
+                error: emailError.message,
+                plansCount: selectedPlans.length,
+                recipientEmail: recipientEmail
+            });
+        }
+
+    } catch (error) {
+        console.error('Error sending insurance quotes email:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Error sending email',
+            error: error.message
+        });
+    }
+};
+
 
