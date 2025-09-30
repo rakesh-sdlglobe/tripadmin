@@ -14,10 +14,10 @@ const auth = {
 };
 
 // Initialize Razorpay instance
-// const razorpay = new Razorpay({
-//   key_id: process.env.RAZORPAY_KEY_ID,
-//   key_secret: process.env.RAZORPAY_KEY_SECRET
-// });
+const razorpay = new Razorpay({
+  key_id: process.env.RAZORPAY_KEY_ID,
+  key_secret: process.env.RAZORPAY_KEY_SECRET
+});
 
 const apiHeaders = {
     "Content-Type": "application/json",
@@ -325,29 +325,30 @@ exports.getIRCTCForgotDetails = async (req, res) => {
 }
 
 
-// exports.getRazorpayOrder = async (req, res) => {
-//     const { amount } = req.body;
-//     // console.log("Creating Razorpay order with amount:", amount);
 
-//     try {
-//         const options = {
-//             amount: amount * 100, // Razorpay works in paise
-//             currency: 'INR',
-//             receipt: 'receipt_order_74394',
-//         };
+exports.getRazorpayOrder = async (req, res) => {
+    const { amount } = req.body;
+    // console.log("Creating Razorpay order with amount:", amount);
 
-//         // console.log("Creating Razorpay order with options:", options);
+    try {
+        const options = {
+            amount: amount * 100, // Razorpay works in paise
+            currency: 'INR',
+            receipt: 'receipt_order_74394',
+        };
+
+        // console.log("Creating Razorpay order with options:", options);
         
 
-//         const order = await razorpay.orders.create(options);
+        const order = await razorpay.orders.create(options);
 
-//         // console.log("Razorpay order created successfully:", order);
+        // console.log("Razorpay order created successfully:", order);
         
-//         res.json(order);
-//     } catch (error) {
-//         res.status(500).send(req.body);
-//     }
-// }
+        res.json(order);
+    } catch (error) {
+        res.status(500).send(req.body);
+    }
+}
 
 
 
