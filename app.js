@@ -23,6 +23,7 @@ const app = express();
 const allowedOrigins = [
   'http://localhost:3000', 
   'http://localhost:3002', 
+  'https://seemytrip-sachin.vercel.app',
   'https://stagews.irctc.co.in',
   'https://seemytrip.vercel.app',
   'https://tripadmin.onrender.com',
