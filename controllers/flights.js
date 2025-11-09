@@ -1,3 +1,163 @@
+// const connection = require("../utils/database");
+// const moment = require("moment");
+// const { default: axios } = require("axios");
+// const { response } = require("express");
+// const express = require("express");
+
+// const base_url = "https://sandboxentityapi.trateq.com";
+// const credentials = {
+//   Type: "C",
+//   Module: "X",
+//   Domain: process.env.DOMAIN,
+//   LoginID: process.env.LOGIN_ID,
+//   Password: process.env.PASSWORD,
+//   LanguageLocale: process.env.LANGUAGE,
+//   IpAddress: "8.8.8.8",
+// };
+
+// exports.getFlightsAirports = async (req, res) => {
+//   const { input } = req.body;
+//   try {
+//     const response = await axios.post(`${base_url}/SIGNIX/B2B/StaticData/AC`, {
+//       Credential: credentials,
+//       AcType: "AIRPORT",
+//       SearchText: input || "",
+//       AllData: input ? true : false,
+//     });
+//     console.log("Response from flight airports API:", response.data);
+//     if (!response.data || response.data.length === 0) {
+//       return res.status(404).json({ error: "No airports found" });
+//     }
+//     res.status(200).json(response.data);
+//   } catch (error) {
+//     console.error("Error fetching airport:", error.message);
+//     res.status(500).json({ error: "Internal server error" });
+//   }
+// };
+
+
+
+// exports.getFlightsList = async (req, res) => {
+//   const Request = req.body;
+//   console.log("this request", Request);
+
+//   Request.Credential = credentials;
+//   try {
+//     const response = await axios.post(
+//       `${base_url}/SIGNIX/B2B/Flight/Search`,
+//       Request
+//     );
+//     console.log("this response ", response.data);
+
+//     res.status(200).json(response.data);
+//   } catch (error) {
+//     res.status(500).json({ error: error.message });
+//   }
+// };
+
+// exports.getFlightFareRule = async (req, res) => {
+//   const Request = req.body;
+//   console.log("this request", Request);
+
+//   Request.Credential = credentials;
+//   try {
+//     const response = await axios.post(
+//       `${base_url}/SIGNIX/B2B/Flight/FareRule`,
+//       Request
+//     );
+//     console.log("this /SIGNIX/B2B/Flight/FareRule ", response.data);
+
+//     res.status(200).json(response.data);
+//   } catch (error) {
+//     res.status(500).json({ error: error.message });
+//   }
+// };
+
+// exports.getFlightPriceValidate = async (req, res) => {
+//   const Request = req.body;
+//   console.log("this request", Request);
+
+//   Request.Credential = credentials;
+//   try {
+//     const response = await axios.post(
+//       `${base_url}/SIGNIX/B2B/PriceValidation`,
+//       Request
+//     );
+//     console.log("this /SIGNIX/B2B/PriceValidation ", response.data);
+
+//     res.status(200).json(response.data);
+//   } catch (error) {
+//     res.status(500).json({ error: error.message });
+//   }
+// };
+
+// exports.getFlightServiceTax = async (req, res) => {
+//   const Request = req.body;
+//   console.log("this request", Request);
+
+//   Request.Credential = credentials;
+//   try {
+//     const response = await axios.post(
+//       `${base_url}/SIGNIX/B2B/ServiceTax`,
+//       Request
+//     );
+//     console.log("this /SIGNIX/B2B/ServiceTax ", response.data);
+
+//     res.status(200).json(response.data);
+//   } catch (error) {
+//     res.status(500).json({ error: error.message });
+//   }
+// };
+
+// exports.getFlightPreBook = async (req, res) => {
+//   const Request = req.body;
+//   console.log("this request", Request);
+
+//   Request.Credential = credentials;
+//   try {
+//     const response = await axios.post(
+//       `${base_url}/SIGNIX/B2B/PreBook`,
+//       Request
+//     );
+//     console.log("this /SIGNIX/B2B/PreBook ", response.data);
+//     res.status(200).json(response.data);
+//   } catch (error) {
+//     res.status(500).json({ error: error.message });
+//   }
+// };
+
+// exports.getFlightBook = async (req, res) => {
+//   const Request = req.body;
+//   console.log("this request", Request);
+//   Request.Credential = credentials;
+//   try {
+//     const response = await axios.post(
+//       `${base_url}/SIGNIX/B2B/BookComplete`,
+//       Request
+//     );
+//     console.log("this /SIGNIX/B2B/BookComplete ", response.data);
+//     res.status(200).json(response.data);
+//   } catch (error) {
+//     res.status(500).json({ error: error.message });
+//   }
+// };
+
+// exports.getFlightBookDetails = async (req, res) => {
+//   const Request = req.body;
+//   console.log("this request", Request); 
+//   Request.Credential = credentials;
+//   try {
+//     const response = await axios.post(
+//       `${base_url}/SIGNIX/B2B/BookingDetails`,
+//       Request
+//     );
+//     console.log("this /SIGNIX/B2B/BookingDetails ", response.data);
+//     res.status(200).json(response.data);
+//   } catch (error) {
+//     res.status(500).json({ error: error.message });
+//   }
+// };
+
 const connection = require("../utils/database");
 const moment = require("moment");
 const { default: axios } = require("axios");
@@ -5,160 +165,257 @@ const { response } = require("express");
 const express = require("express");
 
 const base_url = "https://sandboxentityapi.trateq.com";
-const credentials = {
-  Type: "C",
-  Module: "X",
-  Domain: process.env.DOMAIN,
-  LoginID: process.env.LOGIN_ID,
-  Password: process.env.PASSWORD,
-  LanguageLocale: process.env.LANGUAGE,
-  IpAddress: "8.8.8.8",
-};
+
+// Helper function to create credentials
+function createCredentials() {
+  return {
+    Type: "C",
+    Module: "X",
+    Domain: process.env.DOMAIN,
+    LoginID: process.env.LOGIN_ID,
+    Password: process.env.PASSWORD,
+    LanguageLocale: process.env.LANGUAGE || "en",
+    IpAddress: "8.8.8.8",
+  };
+}
+
+// Helper function for consistent error handling
+function handleTrateqError(error, res) {
+  console.error('🔴 TRATEQ API FAILED:');
+  console.error('Error Message:', error.message);
+  console.error('Error Code:', error.code);
+
+  if (error.response) {
+    console.error('Status:', error.response.status);
+    console.error('Data:', JSON.stringify(error.response.data, null, 2));
+    console.error('URL:', error.config?.url);
+
+    res.status(error.response.status).json({
+      error: "Trateq API Error",
+      status: error.response.status,
+      data: error.response.data
+    });
+  } else if (error.request) {
+    console.error('No response received');
+    res.status(503).json({
+      error: "Trateq API Unavailable",
+      details: "No response received from Trateq API"
+    });
+  } else {
+    console.error('Setup error:', error.message);
+    res.status(500).json({
+      error: "Internal Server Error",
+      details: error.message
+    });
+  }
+}
 
 exports.getFlightsAirports = async (req, res) => {
   const { input } = req.body;
   try {
+    console.log('🚀 Making Trateq API request...');
+
     const response = await axios.post(`${base_url}/SIGNIX/B2B/StaticData/AC`, {
-      Credential: credentials,
+      Credential: createCredentials(),
       AcType: "AIRPORT",
       SearchText: input || "",
       AllData: input ? true : false,
+    }, {
+      timeout: 10000,
+      headers: {
+        'Content-Type': 'application/json',
+        'User-Agent': 'TripAdmin/1.0'
+      }
     });
-    console.log("Response from flight airports API:", response.data);
-    if (!response.data || response.data.length === 0) {
-      return res.status(404).json({ error: "No airports found" });
-    }
+
+    console.log('✅ Trateq API Success - Status:', response.status);
     res.status(200).json(response.data);
   } catch (error) {
-    console.error("Error fetching airport:", error.message);
-    res.status(500).json({ error: "Internal server error" });
+    handleTrateqError(error, res);
   }
 };
 
-
-
 exports.getFlightsList = async (req, res) => {
   const Request = req.body;
-  console.log("this request", Request);
+  console.log("Flight search request:", Request);
 
-  Request.Credential = credentials;
   try {
+    Request.Credential = createCredentials();
+    
     const response = await axios.post(
       `${base_url}/SIGNIX/B2B/Flight/Search`,
-      Request
+      Request,
+      {
+        timeout: 10000,
+        headers: {
+          'Content-Type': 'application/json',
+          'User-Agent': 'TripAdmin/1.0'
+        }
+      }
     );
-    console.log("this response ", response.data);
-
+    
+    console.log("Flight search response:", response.data);
     res.status(200).json(response.data);
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    handleTrateqError(error, res);
   }
 };
 
 exports.getFlightFareRule = async (req, res) => {
   const Request = req.body;
-  console.log("this request", Request);
+  console.log("Fare rule request:", Request);
 
-  Request.Credential = credentials;
   try {
+    Request.Credential = createCredentials();
+    
     const response = await axios.post(
       `${base_url}/SIGNIX/B2B/Flight/FareRule`,
-      Request
+      Request,
+      {
+        timeout: 10000,
+        headers: {
+          'Content-Type': 'application/json',
+          'User-Agent': 'TripAdmin/1.0'
+        }
+      }
     );
-    console.log("this /SIGNIX/B2B/Flight/FareRule ", response.data);
-
+    
+    console.log("Fare rule response:", response.data);
     res.status(200).json(response.data);
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    handleTrateqError(error, res);
   }
 };
 
 exports.getFlightPriceValidate = async (req, res) => {
   const Request = req.body;
-  console.log("this request", Request);
+  console.log("Price validation request:", Request);
 
-  Request.Credential = credentials;
   try {
+    Request.Credential = createCredentials();
+    
     const response = await axios.post(
       `${base_url}/SIGNIX/B2B/PriceValidation`,
-      Request
+      Request,
+      {
+        timeout: 10000,
+        headers: {
+          'Content-Type': 'application/json',
+          'User-Agent': 'TripAdmin/1.0'
+        }
+      }
     );
-    console.log("this /SIGNIX/B2B/PriceValidation ", response.data);
-
+    
+    console.log("Price validation response:", response.data);
     res.status(200).json(response.data);
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    handleTrateqError(error, res);
   }
 };
 
 exports.getFlightServiceTax = async (req, res) => {
   const Request = req.body;
-  console.log("this request", Request);
+  console.log("Service tax request:", Request);
 
-  Request.Credential = credentials;
   try {
+    Request.Credential = createCredentials();
+    
     const response = await axios.post(
       `${base_url}/SIGNIX/B2B/ServiceTax`,
-      Request
+      Request,
+      {
+        timeout: 10000,
+        headers: {
+          'Content-Type': 'application/json',
+          'User-Agent': 'TripAdmin/1.0'
+        }
+      }
     );
-    console.log("this /SIGNIX/B2B/ServiceTax ", response.data);
-
+    
+    console.log("Service tax response:", response.data);
     res.status(200).json(response.data);
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    handleTrateqError(error, res);
   }
 };
 
 exports.getFlightPreBook = async (req, res) => {
   const Request = req.body;
-  console.log("this request", Request);
+  console.log("Pre-book request:", Request);
 
-  Request.Credential = credentials;
   try {
+    Request.Credential = createCredentials();
+    
     const response = await axios.post(
       `${base_url}/SIGNIX/B2B/PreBook`,
-      Request
+      Request,
+      {
+        timeout: 10000,
+        headers: {
+          'Content-Type': 'application/json',
+          'User-Agent': 'TripAdmin/1.0'
+        }
+      }
     );
-    console.log("this /SIGNIX/B2B/PreBook ", response.data);
+    
+    console.log("Pre-book response:", response.data);
     res.status(200).json(response.data);
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    handleTrateqError(error, res);
   }
 };
 
 exports.getFlightBook = async (req, res) => {
   const Request = req.body;
-  console.log("this request", Request);
-  Request.Credential = credentials;
+  console.log("Book request:", Request);
+
   try {
+    Request.Credential = createCredentials();
+    
     const response = await axios.post(
       `${base_url}/SIGNIX/B2B/BookComplete`,
-      Request
+      Request,
+      {
+        timeout: 10000,
+        headers: {
+          'Content-Type': 'application/json',
+          'User-Agent': 'TripAdmin/1.0'
+        }
+      }
     );
-    console.log("this /SIGNIX/B2B/BookComplete ", response.data);
+    
+    console.log("Book response:", response.data);
     res.status(200).json(response.data);
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    handleTrateqError(error, res);
   }
 };
 
 exports.getFlightBookDetails = async (req, res) => {
   const Request = req.body;
-  console.log("this request", Request); 
-  Request.Credential = credentials;
+  console.log("Booking details request:", Request);
+
   try {
+    Request.Credential = createCredentials();
+    
     const response = await axios.post(
       `${base_url}/SIGNIX/B2B/BookingDetails`,
-      Request
+      Request,
+      {
+        timeout: 10000,
+        headers: {
+          'Content-Type': 'application/json',
+          'User-Agent': 'TripAdmin/1.0'
+        }
+      }
     );
-    console.log("this /SIGNIX/B2B/BookingDetails ", response.data);
+    
+    console.log("Booking details response:", response.data);
     res.status(200).json(response.data);
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    handleTrateqError(error, res);
   }
 };
-
-
 
 
 
