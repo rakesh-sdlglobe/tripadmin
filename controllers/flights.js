@@ -210,28 +210,93 @@ function handleTrateqError(error, res) {
   }
 }
 
-exports.getFlightsAirports = async (req, res) => {
-  const { input } = req.body;
+exports.getFlightsList = async (req, res) => {
+  const Request = req.body;
+  
   try {
-    console.log('🚀 Making Trateq API request...');
-
-    const response = await axios.post(`${base_url}/SIGNIX/B2B/StaticData/AC`, {
-      Credential: createCredentials(),
-      AcType: "AIRPORT",
-      SearchText: input || "",
-      AllData: input ? true : false,
-    }, {
-      timeout: 10000,
-      headers: {
-        'Content-Type': 'application/json',
-        'User-Agent': 'TripAdmin/1.0'
-      }
+    console.log('🚀 Flight Search - Starting request...');
+    console.log('📦 Request body:', JSON.stringify(Request, null, 2));
+    
+    // Create credentials with debug info
+    const credentials = createCredentials();
+    console.log('🔐 Credentials check:', {
+      domain: credentials.Domain ? 'SET' : 'MISSING',
+      loginId: credentials.LoginID ? 'SET' : 'MISSING',
+      hasPassword: !!credentials.Password
     });
 
-    console.log('✅ Trateq API Success - Status:', response.status);
+    Request.Credential = credentials;
+    
+    console.log('🌐 Making request to Trateq Flight Search...');
+    console.log('URL:', `${base_url}/SIGNIX/B2B/Flight/Search`);
+    
+    const response = await axios.post(
+      `${base_url}/SIGNIX/B2B/Flight/Search`,
+      Request,
+      {
+        timeout: 15000, // Increased timeout
+        headers: {
+          'Content-Type': 'application/json',
+          'User-Agent': 'TripAdmin/1.0',
+          'Accept': 'application/json'
+        }
+      }
+    );
+    
+    console.log('✅ Flight Search Success - Status:', response.status);
+    console.log('📊 Response data sample:', JSON.stringify(response.data).substring(0, 200) + '...');
+    
     res.status(200).json(response.data);
+    
   } catch (error) {
-    handleTrateqError(error, res);
+    console.error('🔴 FLIGHT SEARCH FAILED:');
+    console.error('Error Message:', error.message);
+    console.error('Error Code:', error.code);
+    
+    if (error.response) {
+      // Trateq API responded with error
+      console.error('📡 RESPONSE ERROR:');
+      console.error('Status:', error.response.status);
+      console.error('Status Text:', error.response.statusText);
+      console.error('Headers:', error.response.headers);
+      console.error('Data:', JSON.stringify(error.response.data, null, 2));
+      console.error('URL:', error.config?.url);
+      
+      res.status(error.response.status).json({
+        error: "Trateq Flight Search API Error",
+        status: error.response.status,
+        data: error.response.data
+      });
+      
+    } else if (error.request) {
+      // No response from Trateq API
+      console.error('❌ NO RESPONSE FROM TRATEQ:');
+      console.error('Request details:', {
+        url: error.config?.url,
+        method: error.config?.method,
+        data: error.config?.data
+      });
+      console.error('This means Trateq API is not responding');
+      
+      res.status(503).json({
+        error: "Trateq Flight Search API Unavailable",
+        details: "The flight search service is not responding. Please try again later.",
+        debug: {
+          message: error.message,
+          code: error.code
+        }
+      });
+      
+    } else {
+      // Setup error
+      console.error('⚙️ SETUP ERROR:');
+      console.error('Config:', error.config);
+      
+      res.status(500).json({
+        error: "Internal Server Error",
+        details: error.message
+      });
+    }
   }
 };
 
