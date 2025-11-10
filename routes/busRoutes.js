@@ -12,6 +12,7 @@ router.post('/getBoardingPointDetails', busController.GetBoardingPintDetails);
 router.post('/getBlock', busController.GetBlock);
 router.post('/getBooking', busController.GetBook);
 router.post('/getBookingDetails', busController.GetBookingDetails);
+router.post('/busBookingCancel', busController.busBookingCancel);
 
 // Database routes - NO AUTHENTICATION
 router.post('/createBusBooking', busController.createBusBooking);

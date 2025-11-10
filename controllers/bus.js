@@ -572,6 +572,46 @@ exports.GetBookingDetails = async (req, res) => {
     }
 }
 
+
+    exports.busBookingCancel=async(req,res)=>{
+    console.log("1.Bus cancel is working... ");
+    console.log("1.Request body is working... ", req.body);
+    
+    const { EndUserIp, TokenId, BusId, AgencyId, RequestType, Remarks  } = req.body;
+    
+    if (!EndUserIp || !TokenId || !BusId || !AgencyId || !RequestType || !Remarks) {
+        console.error("Missing required parameters:", { EndUserIp, TokenId, BusId, AgencyId, RequestType, Remarks });
+        return res.status(400).json({ 
+            message: "Missing required parameters: EndUserIp, TokenId, BusId, AgencyId, RequestType, and Remarks are required" 
+        });
+    }
+    try {
+    // Prepare the request data
+    const requestData = {
+        EndUserIp,
+        TokenId,
+        BusId,
+        AgencyId,
+        RequestType,
+        Remarks
+    }       
+    const apiResponse = await axios.post(
+        'https://BusBE.tektravels.com/Busservice.svc/rest/SendChangeRequest',
+        requestData,
+        {
+            headers: {
+                'Content-Type': 'application/json'
+            }
+        }
+    );
+    console.log("Bus cancel API Response is working... ", apiResponse.data);
+    res.status(200).json(apiResponse.data);
+} catch (error) {
+    console.error('Error in Bus cancel:', error);
+    res.status(500).json({ message: error.message });
+}
+}
+
 // Create bus booking in database
 exports.createBusBooking = async (req, res) => {
     try {
