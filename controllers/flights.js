@@ -15,44 +15,19 @@ const credentials = {
   IpAddress: "8.8.8.8",
 };
 
-// exports.getFlightsAirports = async (req, res) => {
-//   const { input } = req.body;
-//   try {
-//     const response = await axios.post(`${base_url}/SIGNIX/B2B/StaticData/AC`, {
-//       Credential: credentials,
-//       AcType: "AIRPORT",
-//       SearchText: input || "",
-//       AllData: input ? true : false,
-//     });
-//     console.log("Response from flight airports API:", response.data);
-//     if (!response.data || response.data.length === 0) {
-//       return res.status(404).json({ error: "No airports found" });
-//     }
-//     res.status(200).json(response.data);
-//   } catch (error) {
-//     console.error("Error fetching airport:", error.message);
-//     res.status(500).json({ error: "Internal server error" });
-//   }
-// };
-
-
 exports.getFlightsAirports = async (req, res) => {
-  const { search } = req.body; // Change from 'input' to 'search'
-  
+  const { input } = req.body;
   try {
     const response = await axios.post(`${base_url}/SIGNIX/B2B/StaticData/AC`, {
       Credential: credentials,
       AcType: "AIRPORT",
-      SearchText: search || "", // Use 'search' instead of 'input'
-      AllData: search ? true : false,
+      SearchText: input || "",
+      AllData: input ? true : false,
     });
-    
     console.log("Response from flight airports API:", response.data);
-    
     if (!response.data || response.data.length === 0) {
       return res.status(404).json({ error: "No airports found" });
     }
-    
     res.status(200).json(response.data);
   } catch (error) {
     console.error("Error fetching airport:", error.message);
