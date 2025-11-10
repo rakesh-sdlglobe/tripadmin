@@ -159,17 +159,6 @@
 // };
 
 
-
-
-
-
-
-
-
-
-
-
-
 const connection = require("../utils/database");
 const moment = require("moment");
 const { default: axios } = require("axios");
@@ -243,6 +232,25 @@ exports.getFlightsList = async (req, res) => {
 
     res.status(200).json(response.data);
   } catch (error) {
+    if (error.response?.status === 401 || error.response?.status === 403) {
+      const message =
+        error.response?.data?.Message ||
+        error.response?.data?.message ||
+        error.response?.data;
+      console.error("[Flights] getFlightsList unauthorized", message);
+      return res.status(500).json({
+        error:
+          "Flight search failed: Credential/IP not accepted by Trateq. Confirm sandbox credentials and whitelist settings.",
+        details: message,
+      });
+    }
+    if (error.response?.status === 404) {
+      console.error("[Flights] getFlightsList returned 404", error.response.data);
+      return res.status(500).json({
+        error: "Flight search failed: Trateq returned 404",
+        details: error.response.data,
+      });
+    }
     const errorInfo = logAxiosError("getFlightsList", error);
     res.status(500).json({
       error: "Flight search failed",
