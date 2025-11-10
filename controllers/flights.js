@@ -4,7 +4,7 @@ const { default: axios } = require("axios");
 const { response } = require("express");
 const express = require("express");
 
-const base_url = "https://sandboxentityapi.trateq.com/";
+const base_url = "https://sandboxentityapi.trateq.com";
 const credentials = {
   Type: "C",
   Module: "X",
@@ -34,6 +34,8 @@ exports.getFlightsAirports = async (req, res) => {
     res.status(500).json({ error: "Internal server error" });
   }
 };
+
+
 
 exports.getFlightsList = async (req, res) => {
   const Request = req.body;
