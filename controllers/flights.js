@@ -41,8 +41,6 @@ exports.getFlightsAirports = async (req, res) => {
   const { input } = req.body;
   
   try {
-    const response = await axios.post(`${base_url}/SIGNIX/B2B/StaticData/AC`, {
-      Credential: credentials,
     console.log('🚀 Making Trateq API request from Vercel...', {
       domain: process.env.DOMAIN,
       loginId: process.env.LOGIN_ID,
@@ -70,17 +68,11 @@ exports.getFlightsAirports = async (req, res) => {
         'User-Agent': 'TripAdmin/1.0'
       }
     });
-    console.log("Response from flight airports API:", response.data);
-    if (!response.data || response.data.length === 0) {
-      return res.status(404).json({ error: "No airports found" });
-    }
     
     console.log('✅ Trateq API Success - Status:', response.status);
     res.status(200).json(response.data);
     
   } catch (error) {
-    console.error("Error fetching airport:", error.message);
-    res.status(500).json({ error: "Internal server error" });
     // Enhanced error logging that will show in Vercel logs
     console.error('🔴 TRATEQ API FAILED - FULL ERROR DETAILS:');
     console.error('Error Message:', error.message);
