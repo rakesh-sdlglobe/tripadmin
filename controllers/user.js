@@ -12,7 +12,7 @@
 //       ORDER BY createdAt DESC 
 //       LIMIT 5;
 //     `;
-    
+
 //     connection.query(query, (err, results) => {
 //       if (err) {
 //         console.error('Error fetching recent users:', err);
@@ -29,9 +29,9 @@
 // exports.getUserProfile = async (req, res) => {
 //   try {
 //     const email = req.user.email;
-    
+
 //     console.log("32 email ", email);
-    
+
 //     const query = `
 //       SELECT user_id, userName, firstName, middleName, lastName, email, mobile, gender, dob, isEmailVerified, isMobileVerified, martialStatus as maritalStatus
 //       FROM users 
@@ -48,8 +48,8 @@
 //         return res.status(404).json({ message: "User not found" });
 //       }
 //       console.log("47 from user controller ", results[0]);
-      
-      
+
+
 //       res.status(200).json(results[0]);
 //     });
 //   } catch (error) {
@@ -60,7 +60,7 @@
 // // Edit User Profile
 // exports.editUserProfile = async (req, res) => {
 //   console.log(res);
-  
+
 //   console.log("59 req data ", req.body);
 //   try {
 //     let { firstName, middleName, lastName, mobile, dob, gender, email, maritalStatus } = req.body;
@@ -93,10 +93,10 @@
 
 //     console.log("60 maritalStatus ", maritalStatusValue);
 //     console.log("60 gender ", genderValue);
-    
+
 //     // Check if maritalStatus is provided, if not, exclude it from the update
 //     let updateQuery, queryParams;
-    
+
 //     if (maritalStatusValue !== undefined && maritalStatusValue !== null && maritalStatusValue !== '') {
 //       updateQuery = `
 //         UPDATE users 
@@ -168,7 +168,7 @@
 //       WHERE 
 //         u.id = ?;
 //     `;
-    
+
 //     connection.query(query, [userId], (err, bookings) => {
 //       if (err) {
 //         console.error('Error fetching booking details:', err);
@@ -187,7 +187,7 @@
 // exports.addTraveller = async (req, res) => {
 //   console.log("Passenger API triggered..");
 //   const user_id = req.user;
-  
+
 //   try {
 //     const {
 //       passengerId, // Receiving passengerId in request
@@ -412,7 +412,7 @@ exports.getRecentUsers = async (req, res) => {
       ORDER BY createdAt DESC 
       LIMIT 5;
     `;
-    
+
     connection.query(query, (err, results) => {
       if (err) {
         // console.error('Error fetching recent users:', err);
@@ -420,7 +420,7 @@ exports.getRecentUsers = async (req, res) => {
       }
       res.json(results);
     });
-  } catch (err) {   
+  } catch (err) {
     res.status(500).json({ message: "Server error" });
   }
 };
@@ -429,9 +429,9 @@ exports.getRecentUsers = async (req, res) => {
 exports.getUserProfile = async (req, res) => {
   try {
     const email = req.user.email;
-    
+
     // console.log("32 email ", email);
-    
+
     const query = `
       SELECT user_id, userName, firstName, middleName, lastName, email, mobile, gender, dob, isEmailVerified, isMobileVerified, martialStatus as maritalStatus
       FROM users 
@@ -448,8 +448,8 @@ exports.getUserProfile = async (req, res) => {
         return res.status(404).json({ message: "User not found" });
       }
       console.log("47 from user controller ", results[0]);
-      
-      
+
+
       res.status(200).json(results[0]);
     });
   } catch (error) {
@@ -465,7 +465,7 @@ exports.editUserProfile = async (req, res) => {
 
     // Convert marital status to ENUM values: 'M' for Married, 'U' for Unmarried/Single
     let maritalStatusValue = null;
-    
+
     if (maritalStatus) {
       switch (maritalStatus.toLowerCase()) {
         case 'single':
@@ -498,10 +498,10 @@ exports.editUserProfile = async (req, res) => {
 
     console.log("60 maritalStatus ", maritalStatusValue);
     console.log("60 gender ", genderValue);
-    
+
     // Get user_id from the database using email from JWT token
     const getUserQuery = `SELECT user_id FROM users WHERE email = ?`;
-    
+
     connection.query(getUserQuery, [req.user.email], (err, userResult) => {
       if (err) {
         console.error('Error fetching user_id:', err);
@@ -513,24 +513,24 @@ exports.editUserProfile = async (req, res) => {
       }
 
       const userId = userResult[0].user_id;
-      
+
       // Build the update query dynamically
       let updateFields = [];
       let queryParams = [];
-      
+
       // Add fields that are always updated
       updateFields.push('firstName = ?', 'middleName = ?', 'lastName = ?', 'mobile = ?', 'dob = ?', 'gender = ?', 'email = ?');
       queryParams.push(firstName, middleName, lastName, mobile, dob, genderValue, email);
-      
+
       // Add maritalStatus only if it's a valid ENUM value
       if (maritalStatusValue === 'M' || maritalStatusValue === 'U') {
         updateFields.push('martialStatus = ?');
         queryParams.push(maritalStatusValue);
       }
-      
+
       // Add user_id for WHERE clause
       queryParams.push(userId);
-      
+
       const updateQuery = `
         UPDATE users 
         SET ${updateFields.join(', ')} 
@@ -603,7 +603,7 @@ exports.myBookings = async (req, res) => {
       WHERE 
         u.id = ?;
     `;
-    
+
     connection.query(query, [userId], (err, bookings) => {
       if (err) {
         // console.error('Error fetching booking details:', err);
@@ -636,11 +636,30 @@ exports.addTraveller = async (req, res) => {
       }
 
       const user_id = userResult[0].user_id;
-      const { firstname, mobile, dob } = req.body;
+      // Accept both old format (firstname, mobile, dob) and new format (passengerName, passengerAge, etc.)
+      const { 
+        firstname, 
+        mobile, 
+        dob, 
+        passengerName, 
+        passengerAge,
+        passengerMobileNumber,
+        passengerGender,
+        passengerBerthChoice,
+        passengerBedrollChoice,
+        passengerNationality,
+        country,
+        foodPreference
+      } = req.body;
 
-      // Calculate age from DOB
-      let age = null;
-      if (dob) {
+      console.log("Received traveler data:", { firstname, mobile, dob, passengerName, passengerAge, passengerMobileNumber, passengerGender, passengerBerthChoice, passengerBedrollChoice, passengerNationality, country, foodPreference });
+
+      // Use passengerName if provided, otherwise fall back to firstname
+      const name = passengerName || firstname;
+      
+      // Use passengerAge if provided, otherwise calculate from DOB
+      let age = passengerAge || null;
+      if (!age && dob) {
         const birthDate = new Date(dob);
         const today = new Date();
         age = today.getFullYear() - birthDate.getFullYear();
@@ -650,18 +669,48 @@ exports.addTraveller = async (req, res) => {
         }
       }
 
+      // Use passengerMobileNumber if provided, otherwise fall back to mobile
+      const phoneNumber = passengerMobileNumber || mobile;
+
+      // Format gender - convert "Male"/"Female" to "M"/"F" or keep as is
+      let formattedGender = null;
+      if (passengerGender) {
+        const gender = passengerGender.toString().toUpperCase();
+        if (gender === 'MALE' || gender === 'M') {
+          formattedGender = 'M';
+        } else if (gender === 'FEMALE' || gender === 'F') {
+          formattedGender = 'F';
+        } else {
+          formattedGender = gender; // Keep original if not recognized
+        }
+      }
+
+      // Use passengerNationality if provided, otherwise fall back to country
+      const nationality = passengerNationality || country || null;
+
+      // Convert passengerBedrollChoice to boolean (0 or 1 for database)
+      const bedrollChoice = passengerBedrollChoice ? 1 : 0;
+
+      console.log("Processed values:", { name, phoneNumber, dob, age, formattedGender, passengerBerthChoice, bedrollChoice, nationality, foodPreference });
+
       const insertQuery = `
         INSERT INTO passengers (
-          user_id, passengerName, passengerMobileNumber, pasenger_dob, passengerAge
-        ) VALUES (?, ?, ?, ?, ?)
+          user_id, passengerName, passengerMobileNumber, pasenger_dob, passengerAge, passengerGender,
+          passengerBerthChoice, passengerBedrollChoice, passengerNationality, foodPreference
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `;
 
       const values = [
         user_id,
-        firstname || null,
-        mobile || null,
+        name || null,
+        phoneNumber || null,
         dob || null,
-        age
+        age,
+        formattedGender,
+        passengerBerthChoice || null,
+        bedrollChoice,
+        nationality,
+        foodPreference || null
       ];
 
       connection.query(insertQuery, values, (insertErr, insertResults) => {
@@ -695,21 +744,33 @@ exports.getTravelers = async (req, res) => {
 
       const userId = userResult[0].user_id;
 
-      const query = `
-        SELECT 
-          passengerId as id,
-          passengerName as firstname,
-          passengerMobileNumber as mobile,
-          pasenger_dob as dob
-        FROM passengers 
-        WHERE user_id = ?;
-      `;
+      // First try to select all columns, then map them
+      // This handles cases where some columns might not exist
+      const query = `SELECT * FROM passengers WHERE user_id = ?;`;
 
       connection.query(query, [userId], (err, travelers) => {
         if (err) {
-          return res.status(500).json({ message: "Internal server error" });
+          console.error("Error fetching travelers:", err);
+          console.error("SQL Error:", err.sqlMessage);
+          console.error("SQL State:", err.sqlState);
+          return res.status(500).json({ message: "Internal server error", error: err.message });
         }
-        res.status(200).json(travelers);
+        
+        // Map the database fields to frontend-expected field names
+        const mappedTravelers = travelers.map(traveler => ({
+          passengerId: traveler.passengerId,
+          passengerName: traveler.passengerName,
+          passengerAge: traveler.passengerAge,
+          passengerGender: traveler.passengerGender,
+          passengerBerthChoice: traveler.passengerBerthChoice || null,
+          passengerBedrollChoice: traveler.passengerBedrollChoice || 0,
+          country: traveler.passengerNationality || null,
+          passengerMobileNumber: traveler.passengerMobileNumber || null,
+          dob: traveler.pasenger_dob || null,
+          foodPreference: traveler.foodPreference || null
+        }));
+        
+        res.status(200).json(mappedTravelers);
       });
     });
   } catch (error) {

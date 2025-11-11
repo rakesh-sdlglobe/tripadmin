@@ -16,37 +16,67 @@ const flightRoutes = require('./routes/flightsRoutes');
 const busRoutes = require('./routes/busRoutes');
 const insuranceRoutes = require('./routes/insuranceRoute');
 const transferRoutes = require('./routes/transferRoute');
+const easebuzzPaymentRoutes = require('./routes/easebuzz_payments_Routes');
 const app = express();
 
 // Middleware setup
 const allowedOrigins = [
   'http://localhost:3000', 
   'http://localhost:3002', 
+  'https://seemytrip-mu7y.onrender.com',
+  'https://seemytrip-sachin.vercel.app',
   'https://stagews.irctc.co.in',
   'https://seemytrip.vercel.app',
   'https://tripadmin.onrender.com',
+  'https://test.seemytrip.com',
   'https://www.seemytrip.com',
   'https://tripadmin.seemytrip.com',
   'https://seemytrip.com',
+  // Easebuzz payment gateway domains
+  'https://testpay.easebuzz.in',
+  'https://pay.easebuzz.in',
+  'http://testpay.easebuzz.in',
+  'http://pay.easebuzz.in',
 ];
 
-app.use(cors({
-  origin: (origin, callback) => {
-    // Allow requests with no origin (like mobile apps or Postman)
-    if (!origin) return callback(null, true);
+// CORS middleware - allow payment gateway callbacks from any origin
+app.use((req, res, next) => {
+  const isPaymentCallback = req.path?.includes('/payment_callback') || 
+                            req.originalUrl?.includes('/payment_callback') ||
+                            req.url?.includes('/payment_callback');
+  
+  if (isPaymentCallback) {
+    // Allow payment callbacks from any origin (payment gateways redirect from their domains)
+    cors({
+      origin: true,
+      methods: ['GET', 'POST'],
+      credentials: false
+    })(req, res, next);
+  } else {
+    // Normal CORS for other routes
+    cors({
+      origin: (origin, callback) => {
+        // Allow requests with no origin (like mobile apps, Postman, or server-to-server redirects)
+        if (!origin) {
+          return callback(null, true);
+        }
 
-    if (allowedOrigins.includes(origin)) {
-      callback(null, true); // Origin is allowed
-    } else {
-      callback(new Error('Not allowed by CORS')); // Origin is not allowed
-    }
-  },
-  methods: ['GET', 'POST', 'PUT', 'DELETE'], // Specify allowed methods
-  // credentials: true, // Uncomment if credentials are needed
-}));
+        // Check if origin is in allowed list
+        if (allowedOrigins.includes(origin)) {
+          callback(null, true); // Origin is allowed
+        } else {
+          callback(new Error('Not allowed by CORS')); // Origin is not allowed
+        }
+      },
+      methods: ['GET', 'POST', 'PUT', 'DELETE'], // Specify allowed methods
+      credentials: false,
+    })(req, res, next);
+  }
+});
 
 app.use(express.json());
 app.use(bodyParser.json());
+app.use(express.urlencoded({ extended: true })); // Parse URL-encoded bodies (for Easebuzz POST callbacks)
 
 
 // Routes
@@ -63,7 +93,7 @@ app.use('/api/password', passwordRoutes);
 app.use('/api/otp', otpRoutes);
 app.use('/api/insurance', insuranceRoutes);
 app.use('/api/transfer', transferRoutes);
-
+app.use('/api/easebuzzPayment', easebuzzPaymentRoutes);
 
 app.use('/api/uploads', express.static(path.join(__dirname, '/uploads')));
 
@@ -81,13 +111,29 @@ app.get('/api/test', (req, res) => {
 
 // Global error handling
 app.use((err, req, res, next) => {
+  console.error('❌ Global Error Handler:', err.message);
   console.error(err.stack);
+  
+  // If it's a CORS error on a callback route, redirect to failure page instead of showing error
+  if (err.message === 'Not allowed by CORS' && req.path.includes('/payment_callback')) {
+    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+    const txnid = req.body?.txnid || req.query?.txnid || '';
+    console.log('⚠️ CORS error on callback, redirecting to failure page');
+    return res.redirect(`${frontendUrl}/bus-payment-failure?txnid=${txnid}`);
+  }
+  
+  // If it's a CORS error, send proper CORS error response
+  if (err.message === 'Not allowed by CORS') {
+    return res.status(403).json({ error: 'Not allowed by CORS' });
+  }
+  
   res.status(500).send('Something broke!');
 });
 
 
 // Start server
-const PORT = 3002;
+// const PORT = 3002;
+const PORT = process.env.PORT || 3002;
 app.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);
 });
