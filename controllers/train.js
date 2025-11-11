@@ -326,29 +326,29 @@ exports.getIRCTCForgotDetails = async (req, res) => {
 
 
 
-exports.getRazorpayOrder = async (req, res) => {
-    const { amount } = req.body;
-    // console.log("Creating Razorpay order with amount:", amount);
+// exports.getRazorpayOrder = async (req, res) => {
+//     const { amount } = req.body;
+//     // console.log("Creating Razorpay order with amount:", amount);
 
-    try {
-        const options = {
-            amount: amount * 100, // Razorpay works in paise
-            currency: 'INR',
-            receipt: 'receipt_order_74394',
-        };
+//     try {
+//         const options = {
+//             amount: amount * 100, // Razorpay works in paise
+//             currency: 'INR',
+//             receipt: 'receipt_order_74394',
+//         };
 
-        // console.log("Creating Razorpay order with options:", options);
+//         // console.log("Creating Razorpay order with options:", options);
         
 
-        const order = await razorpay.orders.create(options);
+//         const order = await razorpay.orders.create(options);
 
-        // console.log("Razorpay order created successfully:", order);
+//         // console.log("Razorpay order created successfully:", order);
         
-        res.json(order);
-    } catch (error) {
-        res.status(500).send(req.body);
-    }
-}
+//         res.json(order);
+//     } catch (error) {
+//         res.status(500).send(req.body);
+//     }
+// }
 
 
 
