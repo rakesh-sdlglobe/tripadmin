@@ -397,7 +397,6 @@
 
 
 
-
 const connection = require("../utils/database");
 const multer = require('multer');
 const fs = require('fs');
@@ -412,10 +411,8 @@ exports.getRecentUsers = async (req, res) => {
       ORDER BY createdAt DESC 
       LIMIT 5;
     `;
-
     connection.query(query, (err, results) => {
       if (err) {
-        // console.error('Error fetching recent users:', err);
         return res.status(500).json({ message: "Server error" });
       }
       res.json(results);
@@ -430,60 +427,53 @@ exports.getUserProfile = async (req, res) => {
   try {
     const email = req.user.email;
 
-    // console.log("32 email ", email);
-
     const query = `
-      SELECT user_id, userName, firstName, middleName, lastName, email, mobile, gender, dob, isEmailVerified, isMobileVerified, martialStatus as maritalStatus
+      SELECT user_id, userName, firstName, middleName, lastName, email, mobile, gender, dob, 
+             isEmailVerified, isMobileVerified, martialStatus as maritalStatus
       FROM users 
       WHERE email = ?;
     `;
 
     connection.query(query, [email], (err, results) => {
       if (err) {
-        // console.error('Error fetching user profile:', err);
         return res.status(500).json({ message: "Internal server error" });
       }
 
       if (results.length === 0) {
         return res.status(404).json({ message: "User not found" });
       }
-      console.log("47 from user controller ", results[0]);
-
 
       res.status(200).json(results[0]);
     });
   } catch (error) {
-    // console.error('Error in getUserProfile:', error);
     res.status(500).json({ message: "Internal server error" });
   }
 };
+
 // Edit User Profile
 exports.editUserProfile = async (req, res) => {
   console.log("59 req data ", req.body);
   try {
     let { firstName, middleName, lastName, mobile, dob, gender, email, maritalStatus } = req.body;
 
-    // Convert marital status to ENUM values: 'M' for Married, 'U' for Unmarried/Single
     let maritalStatusValue = null;
 
     if (maritalStatus) {
       switch (maritalStatus.toLowerCase()) {
         case 'single':
         case 'unmarried':
-        case 'u':  // Add this case for when 'U' is sent directly
+        case 'u':
           maritalStatusValue = 'U';
           break;
         case 'married':
-        case 'm':  // Add this case for when 'M' is sent directly
+        case 'm':
           maritalStatusValue = 'M';
           break;
         default:
-          // If the value doesn't match, don't update this field
           maritalStatusValue = null;
       }
     }
 
-    // Switch for gender: 'Male' -> 'M', 'Female' -> 'F'
     let genderValue;
     switch (gender?.toLowerCase()) {
       case 'male':
@@ -496,39 +486,25 @@ exports.editUserProfile = async (req, res) => {
         genderValue = gender;
     }
 
-    console.log("60 maritalStatus ", maritalStatusValue);
-    console.log("60 gender ", genderValue);
-
-    // Get user_id from the database using email from JWT token
     const getUserQuery = `SELECT user_id FROM users WHERE email = ?`;
 
     connection.query(getUserQuery, [req.user.email], (err, userResult) => {
-      if (err) {
-        console.error('Error fetching user_id:', err);
-        return res.status(500).json({ message: "Internal server error" });
-      }
-
-      if (userResult.length === 0) {
-        return res.status(404).json({ message: "User not found" });
-      }
+      if (err) return res.status(500).json({ message: "Internal server error" });
+      if (userResult.length === 0) return res.status(404).json({ message: "User not found" });
 
       const userId = userResult[0].user_id;
 
-      // Build the update query dynamically
-      let updateFields = [];
-      let queryParams = [];
+      let updateFields = [
+        'firstName = ?', 'middleName = ?', 'lastName = ?',
+        'mobile = ?', 'dob = ?', 'gender = ?', 'email = ?'
+      ];
+      let queryParams = [firstName, middleName, lastName, mobile, dob, genderValue, email];
 
-      // Add fields that are always updated
-      updateFields.push('firstName = ?', 'middleName = ?', 'lastName = ?', 'mobile = ?', 'dob = ?', 'gender = ?', 'email = ?');
-      queryParams.push(firstName, middleName, lastName, mobile, dob, genderValue, email);
-
-      // Add maritalStatus only if it's a valid ENUM value
       if (maritalStatusValue === 'M' || maritalStatusValue === 'U') {
         updateFields.push('martialStatus = ?');
         queryParams.push(maritalStatusValue);
       }
 
-      // Add user_id for WHERE clause
       queryParams.push(userId);
 
       const updateQuery = `
@@ -537,19 +513,9 @@ exports.editUserProfile = async (req, res) => {
         WHERE user_id = ?;
       `;
 
-      console.log("Update Query:", updateQuery);
-      console.log("Query Params:", queryParams);
+      connection.query(updateQuery, queryParams, (err) => {
+        if (err) return res.status(500).json({ message: "Internal server error" });
 
-      // Update the user profile
-      connection.query(updateQuery, queryParams, (err, result) => {
-        if (err) {
-          console.error('Error updating user profile:', err);
-          return res.status(500).json({ message: "Internal server error", error: err.message });
-        }
-
-        console.log("Update result:", result);
-
-        // Fetch the updated user profile
         const fetchQuery = `
           SELECT user_id, userName, firstName, middleName, lastName, email, mobile, gender, dob, 
                  isEmailVerified, isMobileVerified, martialStatus as maritalStatus, 
@@ -558,16 +524,10 @@ exports.editUserProfile = async (req, res) => {
           WHERE user_id = ?;
         `;
         connection.query(fetchQuery, [userId], (err, rows) => {
-          if (err) {
-            console.error('Error fetching updated user profile:', err);
-            return res.status(500).json({ message: "Internal server error" });
-          }
-
+          if (err) return res.status(500).json({ message: "Internal server error" });
           if (rows.length > 0) {
-            console.log("Sending data is ", rows[0]);
-            const user = rows[0];
             res.status(200).json({
-              ...user,
+              ...rows[0],
               message: "Profile Edited Successfully"
             });
           } else {
@@ -577,11 +537,9 @@ exports.editUserProfile = async (req, res) => {
       });
     });
   } catch (error) {
-    console.error(error);
     res.status(500).json({ message: "Internal server error" });
   }
 };
-
 
 // My Bookings
 exports.myBookings = async (req, res) => {
@@ -605,15 +563,10 @@ exports.myBookings = async (req, res) => {
     `;
 
     connection.query(query, [userId], (err, bookings) => {
-      if (err) {
-        // console.error('Error fetching booking details:', err);
-        return res.status(500).json({ error: "Internal Server Error" });
-      }
-
+      if (err) return res.status(500).json({ error: "Internal Server Error" });
       res.status(200).json({ bookings });
     });
   } catch (error) {
-    // console.error("Error fetching booking details:", error);
     res.status(500).json({ error: "Internal Server Error" });
   }
 };
@@ -623,101 +576,57 @@ exports.addTraveller = async (req, res) => {
   console.log("Passenger API triggered..");
 
   try {
-    // Get user_id from the database using email from JWT token
     const getUserQuery = `SELECT user_id FROM users WHERE email = ?`;
 
     connection.query(getUserQuery, [req.user.email], (err, userResult) => {
-      if (err) {
-        return res.status(500).json({ message: "Internal server error" });
-      }
-
-      if (userResult.length === 0) {
-        return res.status(404).json({ message: "User not found" });
-      }
+      if (err) return res.status(500).json({ message: "Internal server error" });
+      if (userResult.length === 0) return res.status(404).json({ message: "User not found" });
 
       const user_id = userResult[0].user_id;
-      // Accept both old format (firstname, mobile, dob) and new format (passengerName, passengerAge, etc.)
-      const { 
-        firstname, 
-        mobile, 
-        dob, 
-        passengerName, 
-        passengerAge,
-        passengerMobileNumber,
-        passengerGender,
-        passengerBerthChoice,
-        passengerBedrollChoice,
-        passengerNationality,
-        country,
-        foodPreference
+
+      const {
+        firstname, mobile, dob,
+        passengerName, passengerAge, passengerMobileNumber,
+        passengerGender, passengerBerthChoice, passengerBedrollChoice,
+        passengerNationality, country, foodPreference
       } = req.body;
 
-      console.log("Received traveler data:", { firstname, mobile, dob, passengerName, passengerAge, passengerMobileNumber, passengerGender, passengerBerthChoice, passengerBedrollChoice, passengerNationality, country, foodPreference });
-
-      // Use passengerName if provided, otherwise fall back to firstname
       const name = passengerName || firstname;
-      
-      // Use passengerAge if provided, otherwise calculate from DOB
       let age = passengerAge || null;
       if (!age && dob) {
         const birthDate = new Date(dob);
         const today = new Date();
         age = today.getFullYear() - birthDate.getFullYear();
         const m = today.getMonth() - birthDate.getMonth();
-        if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) {
-          age--;
-        }
+        if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) age--;
       }
 
-      // Use passengerMobileNumber if provided, otherwise fall back to mobile
       const phoneNumber = passengerMobileNumber || mobile;
 
-      // Format gender - convert "Male"/"Female" to "M"/"F" or keep as is
       let formattedGender = null;
       if (passengerGender) {
         const gender = passengerGender.toString().toUpperCase();
-        if (gender === 'MALE' || gender === 'M') {
-          formattedGender = 'M';
-        } else if (gender === 'FEMALE' || gender === 'F') {
-          formattedGender = 'F';
-        } else {
-          formattedGender = gender; // Keep original if not recognized
-        }
+        formattedGender = gender === 'MALE' || gender === 'M' ? 'M' :
+          gender === 'FEMALE' || gender === 'F' ? 'F' : gender;
       }
 
-      // Use passengerNationality if provided, otherwise fall back to country
       const nationality = passengerNationality || country || null;
-
-      // Convert passengerBedrollChoice to boolean (0 or 1 for database)
       const bedrollChoice = passengerBedrollChoice ? 1 : 0;
-
-      console.log("Processed values:", { name, phoneNumber, dob, age, formattedGender, passengerBerthChoice, bedrollChoice, nationality, foodPreference });
 
       const insertQuery = `
         INSERT INTO passengers (
-          user_id, passengerName, passengerMobileNumber, pasenger_dob, passengerAge, passengerGender,
-          passengerBerthChoice, passengerBedrollChoice, passengerNationality, foodPreference
+          user_id, passengerName, passengerMobileNumber, pasenger_dob, passengerAge,
+          passengerGender, passengerBerthChoice, passengerBedrollChoice, passengerNationality, foodPreference
         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `;
 
       const values = [
-        user_id,
-        name || null,
-        phoneNumber || null,
-        dob || null,
-        age,
-        formattedGender,
-        passengerBerthChoice || null,
-        bedrollChoice,
-        nationality,
-        foodPreference || null
+        user_id, name, phoneNumber, dob, age,
+        formattedGender, passengerBerthChoice, bedrollChoice, nationality, foodPreference
       ];
 
       connection.query(insertQuery, values, (insertErr, insertResults) => {
-        if (insertErr) {
-          console.error("Error adding passenger:", insertErr);
-          return res.status(500).json({ message: "Database error", error: insertErr.message });
-        }
+        if (insertErr) return res.status(500).json({ message: "Database error", error: insertErr.message });
         return res.status(201).json({ message: "Passenger added successfully", passengerId: insertResults.insertId });
       });
     });
@@ -726,37 +635,21 @@ exports.addTraveller = async (req, res) => {
   }
 };
 
-
-
 // Get Travellers
 exports.getTravelers = async (req, res) => {
   try {
     const getUserQuery = `SELECT user_id FROM users WHERE email = ?`;
 
     connection.query(getUserQuery, [req.user.email], (err, userResult) => {
-      if (err) {
-        return res.status(500).json({ message: "Internal server error" });
-      }
-
-      if (userResult.length === 0) {
-        return res.status(404).json({ message: "User not found" });
-      }
+      if (err) return res.status(500).json({ message: "Internal server error" });
+      if (userResult.length === 0) return res.status(404).json({ message: "User not found" });
 
       const userId = userResult[0].user_id;
-
-      // First try to select all columns, then map them
-      // This handles cases where some columns might not exist
       const query = `SELECT * FROM passengers WHERE user_id = ?;`;
 
       connection.query(query, [userId], (err, travelers) => {
-        if (err) {
-          console.error("Error fetching travelers:", err);
-          console.error("SQL Error:", err.sqlMessage);
-          console.error("SQL State:", err.sqlState);
-          return res.status(500).json({ message: "Internal server error", error: err.message });
-        }
-        
-        // Map the database fields to frontend-expected field names
+        if (err) return res.status(500).json({ message: "Internal server error", error: err.message });
+
         const mappedTravelers = travelers.map(traveler => ({
           passengerId: traveler.passengerId,
           passengerName: traveler.passengerName,
@@ -769,7 +662,7 @@ exports.getTravelers = async (req, res) => {
           dob: traveler.pasenger_dob || null,
           foodPreference: traveler.foodPreference || null
         }));
-        
+
         res.status(200).json(mappedTravelers);
       });
     });
@@ -793,36 +686,26 @@ exports.removeTraveller = async (req, res) => {
       WHERE passengerId = ? AND user_id = ?;
     `;
 
-    connection.query(query, [id, userId], (err, result) => {
-      if (err) {
-        // console.error('Error removing traveler:', err);
-        return res.status(500).json({ message: "Internal server error" });
-      }
-
+    connection.query(query, [id, userId], (err) => {
+      if (err) return res.status(500).json({ message: "Internal server error" });
       res.status(200).json({ message: "Traveller removed successfully" });
     });
   } catch (error) {
-    // console.error("Error removing traveler:", error);
     res.status(500).json({ message: "Internal server error" });
   }
 };
 
-
-
-// API Function
+// Image Upload
 exports.imageUpload = async (req, res) => {
   try {
     const userId = req.params.id;
     if (!req.file || !req.file.path) {
       return res.status(400).json({ message: 'No file uploaded' });
     }
-    const imageUrl = req.file.path; // Cloudinary URL
-    // Save to DB using promise wrapper
+    const imageUrl = req.file.path;
     await connection.promise().query('UPDATE users SET img_url = ? WHERE user_id = ?', [imageUrl, userId]);
     res.status(200).json({ img_url: imageUrl, message: 'Image uploaded successfully' });
   } catch (error) {
-    //      console.error('Image upload error:', error);
     res.status(500).json({ message: 'Server error', error: error.message });
   }
 };
-
