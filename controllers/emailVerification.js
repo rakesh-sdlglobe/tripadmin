@@ -18,9 +18,31 @@ const transporter = nodemailer.createTransport({
   },
 });
 
-const completeLoginForEmail = (email, res) => {
+const createFallbackLoginPayload = (email) => {
+  const extractedFirstName = (email?.split('@')[0] || '').replace(/[^a-zA-Z0-9]/g, '');
+  const fallbackFirstName = extractedFirstName || 'Traveller';
+  const fallbackUser = {
+    user_id: `fallback-${Buffer.from(email).toString('hex').slice(0, 8)}`,
+    email,
+    firstName: fallbackFirstName,
+  };
+
+  const token = generateAccessToken(fallbackUser);
+  const user1 = { user_id: fallbackUser.user_id, email: fallbackUser.email };
+
+  return {
+    email: fallbackUser.email,
+    firstName: fallbackUser.firstName,
+    token,
+    user1,
+  };
+};
+
+const completeLoginForEmail = (email, res, options = {}) => {
+  const { allowFallback = false } = options;
   const emailParts = email.split('@');
   const extractedFirstName = emailParts[0] || '';
+  const sanitizedFirstName = extractedFirstName.replace(/[^a-zA-Z0-9]/g, '') || 'Traveller';
 
   const insertUserQuery = `
     INSERT INTO users (email, firstName, isEmailVerified)
@@ -28,15 +50,23 @@ const completeLoginForEmail = (email, res) => {
     ON DUPLICATE KEY UPDATE isEmailVerified = 1, firstName = COALESCE(firstName, ?)
   `;
 
-  db.query(insertUserQuery, [email, extractedFirstName, extractedFirstName], (err) => {
+  db.query(insertUserQuery, [email, sanitizedFirstName, sanitizedFirstName], (err) => {
     if (err) {
       console.error("Error inserting user:", err);
+      if (allowFallback) {
+        console.warn("Falling back to stateless login for email:", email);
+        return res.status(200).json(createFallbackLoginPayload(email));
+      }
       return res.status(500).send("Error processing user record");
     }
 
     db.query("SELECT user_id, email, firstName FROM users WHERE email = ?", [email], (err2, userResults) => {
       if (err2 || !userResults.length) {
         console.error("Error fetching user ID:", err2);
+        if (allowFallback) {
+          console.warn("Falling back to stateless login while fetching user:", email);
+          return res.status(200).json(createFallbackLoginPayload(email));
+        }
         return res.status(500).send("Error retrieving user");
       }
 
@@ -51,7 +81,7 @@ const completeLoginForEmail = (email, res) => {
 
       return res.status(200).json({
         email,
-        firstName: user.firstName || extractedFirstName,
+        firstName: user.firstName || sanitizedFirstName,
         token: accessToken,
         user1,
       });
@@ -120,8 +150,9 @@ exports.verifyEmailOtp = (req, res) => {
 exports.defaultEmailLogin = (req, res) => {
   try {
     const { email } = req.body;
+    const normalizedEmail = typeof email === 'string' ? email.toLowerCase() : '';
 
-    if (!email) {
+    if (!normalizedEmail) {
       return res.status(400).json({ message: "Email is required" });
     }
 
@@ -131,13 +162,23 @@ exports.defaultEmailLogin = (req, res) => {
       });
     }
 
-    if (email.toLowerCase() !== DEFAULT_LOGIN_EMAIL) {
+    if (normalizedEmail !== DEFAULT_LOGIN_EMAIL) {
       return res.status(401).json({ message: "Unauthorized default login" });
     }
 
-    return completeLoginForEmail(email.toLowerCase(), res);
+    return completeLoginForEmail(normalizedEmail, res, { allowFallback: true });
   } catch (error) {
     console.error("Error in defaultEmailLogin:", error);
+    const normalizedEmail = typeof req.body?.email === 'string'
+      ? req.body.email.toLowerCase()
+      : null;
+    if (
+      normalizedEmail &&
+      (error?.code === 'ER_BAD_DB_ERROR' || error?.code === 'ECONNREFUSED')
+    ) {
+      console.warn("Database unavailable, falling back to stateless login for:", normalizedEmail);
+      return res.status(200).json(createFallbackLoginPayload(normalizedEmail));
+    }
     return res.status(500).json({ message: "Internal server error" });
   }
 };
