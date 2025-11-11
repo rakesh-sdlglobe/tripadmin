@@ -7,7 +7,6 @@ const express = require("express");
 const base_url = "https://sandboxentityapi.trateq.com";
 const axiosInstance = axios.create({
   baseURL: base_url,
-  timeout: 10000,
   headers: {
     "Content-Type": "application/json",
     "User-Agent": "Tripadmin/1.0",
