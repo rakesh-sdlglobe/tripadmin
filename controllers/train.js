@@ -54,12 +54,10 @@ exports.getStation = async (req, res) => {
         const apiResponse = await axios.get('https://www.irctc.co.in/eticketing/StationListServlet.js', {
         headers: {
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)',
-        
             'Accept-Language': 'en-US,en;q=0.5',
             'Connection': 'keep-alive',
             'Referer': 'https://www.irctc.co.in/',
         },
-        timeout: 15000
         }
 
     );
