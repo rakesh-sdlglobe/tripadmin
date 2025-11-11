@@ -616,7 +616,7 @@ exports.addTraveller = async (req, res) => {
       const insertQuery = `
         INSERT INTO passengers (
           user_id, passengerName, passengerMobileNumber, pasenger_dob, passengerAge,
-          passengerGender, passengerBerthChoice, passengerBedrollChoice, passengerNationality, foodPreference
+          passengerGender, passengerBerthChoice, passengerBedrollChoice, passengerNationality, passengerFoodChoice
         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `;
 
@@ -660,7 +660,7 @@ exports.getTravelers = async (req, res) => {
           country: traveler.passengerNationality || null,
           passengerMobileNumber: traveler.passengerMobileNumber || null,
           dob: traveler.pasenger_dob || null,
-          foodPreference: traveler.foodPreference || null
+          passengerFoodChoice: traveler.foodPreference || null
         }));
 
         res.status(200).json(mappedTravelers);
