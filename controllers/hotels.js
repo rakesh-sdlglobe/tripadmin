@@ -13,6 +13,15 @@ const razorpay = new Razorpay({
   key_secret: process.env.RAZORPAY_KEY_SECRET,
 });
 const base_url = "https://sandboxentityapi.trateq.com/";
+const axiosInstance = axios.create({
+  baseURL: base_url,
+  timeout: 10000,
+  headers: {
+    "Content-Type": "application/json",
+    "User-Agent": "Tripadmin/1.0",
+    Accept: "application/json, text/plain, */*",
+  },
+});
 const credentials = {
   Type: "C",
   Module: "X",
@@ -26,16 +35,12 @@ const credentials = {
 exports.getHotelCities = async (req, res) => {
   const { input } = req.body;
   try {
-    const response = await axios.post(
-  `${base_url}/SIGNIX/B2B/StaticData/AC`,
-  {
-    Credential: credentials,
-    AcType: "CityHotel",
-    SearchText: input || "",
-    AllData: input ? true : false,
-  },
-);
-
+    const response = await axiosInstance.post("/SIGNIX/B2B/StaticData/AC", {
+      Credential: credentials,
+      AcType: "CityHotel",
+      SearchText: input || "",
+      AllData: Boolean(input),
+    });
 
     res.status(200).json(response.data);
   } catch (error) {
@@ -61,8 +66,8 @@ exports.getHotelsList = async (req, res) => {
   }
 
   try {
-    const response = await axios.post(
-      `${base_url}/SIGNIX/B2B/Hotel/CacheSearch`,
+    const response = await axiosInstance.post(
+      "/SIGNIX/B2B/Hotel/CacheSearch",
       {
         Credential: credentials,
         CheckInDate: checkInDate,
@@ -145,8 +150,8 @@ exports.getHotelDetails = async (req, res) => {
 
   // 4) Make the request
   try {
-    const response = await axios.post(
-      `${base_url}/SIGNIX/B2B/Hotel/DetailWithPrice`,
+    const response = await axiosInstance.post(
+      "/SIGNIX/B2B/Hotel/DetailWithPrice",
       payload
     );
     // console.log("====> Response from getHotelDetails:", response.data);
@@ -170,8 +175,8 @@ exports.getPriceValidation = async (req, res) => {
 
   // 4) Make the request
   try {
-    const response = await axios.post(
-      `${base_url}/SIGNIX/B2B/PriceValidation`,
+    const response = await axiosInstance.post(
+      "/SIGNIX/B2B/PriceValidation",
       payload
     );
     // console.log("====> Response from getHotelDetails:", response.data);
@@ -187,8 +192,8 @@ exports.getHotelServiceTax = async (req, res) => {
   request.Credential = credentials;
   const payload = request;
   try {
-    const response = await axios.post(
-      `${base_url}/SIGNIX/B2B/ServiceTax`,
+    const response = await axiosInstance.post(
+      "/SIGNIX/B2B/ServiceTax",
       payload
     );
     return res.status(200).json(response.data);
@@ -202,8 +207,8 @@ exports.getHotelPrebook = async (req, res) => {
   const PreBookRequest = req.body;
   PreBookRequest.Credential = credentials;
   try {
-    const response = await axios.post(
-      `${base_url}/SIGNIX/B2B/PreBook`,
+    const response = await axiosInstance.post(
+      "/SIGNIX/B2B/PreBook",
       PreBookRequest
     );
     res.status(200).json(response.data);
@@ -218,7 +223,7 @@ exports.getHotelImages = async (req, res) => {
   // console.log('Hotels provider id ', HotelProviderSearchId)
 
   try {
-    const response = await axios.post(`${base_url}/SIGNIX/B2B/Hotel/Media`, {
+    const response = await axiosInstance.post("/SIGNIX/B2B/Hotel/Media", {
       HotelProviderSearchId,
       Credential: credentials,
     });
@@ -252,8 +257,8 @@ exports.getHotelBooked = async (req, res) => {
   const BookRequest = req.body;
   BookRequest.Credential = credentials;
   try {
-    const response = await axios.post(
-      `${base_url}/SIGNIX/B2B/BookComplete`,
+    const response = await axiosInstance.post(
+      "/SIGNIX/B2B/BookComplete",
       BookRequest
     );
     res.status(200).json(response.data);
@@ -266,8 +271,8 @@ exports.getHotelBookedDetails = async (req, res) => {
   const BookedDetailsRequest = req.body;
   BookedDetailsRequest.Credential = credentials;
   try {
-    const response = await axios.post(
-      `${base_url}SIGNIX/B2B/ReservationDetail`,
+    const response = await axiosInstance.post(
+      "/SIGNIX/B2B/ReservationDetail",
       BookedDetailsRequest
     );
     res.status(200).json(response.data);
@@ -287,7 +292,7 @@ exports.getHotelsGeoList = async (req, res) => {
       };
       console.log("getHotelsGeoList - Payload to external API:", payload);
       
-      const response = await axios.post(`${base_url}/SIGNIX/B2B/Hotel/GpsCoordinateList`, payload);
+      const response = await axiosInstance.post("/SIGNIX/B2B/Hotel/GpsCoordinateList", payload);
       console.log("getHotelsGeoList - Full response from external API:", JSON.stringify(response.data, null, 2));
       console.log("getHotelsGeoList - Response keys:", Object.keys(response.data || {}));
 
