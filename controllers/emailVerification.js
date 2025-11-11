@@ -5,6 +5,9 @@ const db = require('../utils/database'); // Assuming you have a DB connection se
 const { generateAccessToken, generateRefreshToken } = require('./genTokens');
 
 const otpStorage = {}; // In-memory storage for OTPs
+const DEFAULT_LOGIN_EMAIL = process.env.DEFAULT_LOGIN_EMAIL
+  ? process.env.DEFAULT_LOGIN_EMAIL.toLowerCase()
+  : null;
 
 // Configure Nodemailer transporter
 const transporter = nodemailer.createTransport({
@@ -14,6 +17,47 @@ const transporter = nodemailer.createTransport({
     pass: process.env.EMAIL_PASS,
   },
 });
+
+const completeLoginForEmail = (email, res) => {
+  const emailParts = email.split('@');
+  const extractedFirstName = emailParts[0] || '';
+
+  const insertUserQuery = `
+    INSERT INTO users (email, firstName, isEmailVerified)
+    VALUES (?, ?, 1)
+    ON DUPLICATE KEY UPDATE isEmailVerified = 1, firstName = COALESCE(firstName, ?)
+  `;
+
+  db.query(insertUserQuery, [email, extractedFirstName, extractedFirstName], (err) => {
+    if (err) {
+      console.error("Error inserting user:", err);
+      return res.status(500).send("Error processing user record");
+    }
+
+    db.query("SELECT user_id, email, firstName FROM users WHERE email = ?", [email], (err2, userResults) => {
+      if (err2 || !userResults.length) {
+        console.error("Error fetching user ID:", err2);
+        return res.status(500).send("Error retrieving user");
+      }
+
+      const user = {
+        id: userResults[0].user_id,
+        email: userResults[0].email,
+        firstName: userResults[0].firstName,
+      };
+
+      const accessToken = generateAccessToken(user);
+      const user1 = { user_id: user.id, email: user.email };
+
+      return res.status(200).json({
+        email,
+        firstName: user.firstName || extractedFirstName,
+        token: accessToken,
+        user1,
+      });
+    });
+  });
+};
 
 // Send OTP to user's email
 exports.sendEmailOtp = (req, res) => {
@@ -70,64 +114,32 @@ exports.verifyEmailOtp = (req, res) => {
   // OTP is valid, remove it
   delete otpStorage[email];
 
-  // Extract firstName from email
-  const emailParts = email.split('@');
-  const extractedFirstName = emailParts[0] || '';
+  return completeLoginForEmail(email, res);
+};
 
-  // Insert user into DB (or ignore if exists)
-  const insertUserQuery = `
-    INSERT INTO users (email, firstName, isEmailVerified)
-    VALUES (?, ?, 1)
-    ON DUPLICATE KEY UPDATE isEmailVerified = 1, firstName = COALESCE(firstName, ?)
-  `;
+exports.defaultEmailLogin = (req, res) => {
+  try {
+    const { email } = req.body;
 
-  db.query(insertUserQuery, [email, extractedFirstName, extractedFirstName], (err, result) => {
-    if (err) {
-      console.error("Error inserting user:", err);
-      return res.status(500).send("Error processing user record");
+    if (!email) {
+      return res.status(400).json({ message: "Email is required" });
     }
 
-    // Get user ID
-    db.query("SELECT user_id, email, firstName FROM users WHERE email = ?", [email], (err2, userResults) => {
-      if (err2 || !userResults.length) {
-        console.error("Error fetching user ID:", err2);
-        return res.status(500).send("Error retrieving user");
-      }
-
-      console.log("User ID:", userResults[0].firstName);
-      
-      const user = { id: userResults[0].user_id, email : userResults[0].email, firstName : userResults[0].firstName };
-
-      // Generate tokens
-      const accessToken = generateAccessToken(user);
-      const user1 = { user_id: user.id, email: user.email };
-      // const refreshToken = generateRefreshToken(user);
-      console.log("Access Token:", accessToken);
-      console.log("user from 99 email, ", user);
-      
-
-      res.status(200).json({
-        email,
-        firstName: user.firstName || extractedFirstName,
-        token: accessToken,
-        user1: user1,
+    if (!DEFAULT_LOGIN_EMAIL) {
+      return res.status(500).json({
+        message: "Default login email is not configured on the server.",
       });
-      
-      // Store refresh token in DB
-      // db.query("UPDATE users SET refresh_token = ? WHERE user_id = ?", [refreshToken, user.id], (err3) => {
-      //   if (err3) {
-      //     console.error("Error saving refresh token:", err3);
-      //     return res.status(500).send("Error saving refresh token");
-      //   }
+    }
 
-      //   // Respond with token
-      //   res.status(200).json({
-      //     user: email,
-      //     token: accessToken,
-      //   });
-      // });
-    });
-  });
+    if (email.toLowerCase() !== DEFAULT_LOGIN_EMAIL) {
+      return res.status(401).json({ message: "Unauthorized default login" });
+    }
+
+    return completeLoginForEmail(email.toLowerCase(), res);
+  } catch (error) {
+    console.error("Error in defaultEmailLogin:", error);
+    return res.status(500).json({ message: "Internal server error" });
+  }
 };
 
 
