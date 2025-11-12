@@ -140,7 +140,7 @@ exports.easebuzzPaymentCallback = async (req, res) => {
       paymentData.result === 'success';
 
     // Get frontend URL from environment or default to localhost
-    const frontendUrl = process.env.FRONTEND_URL;
+    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
     
     // Redirect to React route with transaction ID (similar to Razorpay handler redirect)
     if (isSuccess) {
@@ -161,7 +161,7 @@ exports.easebuzzPaymentCallback = async (req, res) => {
       query: req.query
     });
     
-    const frontendUrl = process.env.FRONTEND_URL ;
+    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
     const txnid = req.body?.txnid || req.query?.txnid || '';
     
     try {
