@@ -11,5 +11,6 @@ router.post("/getFlightServiceTax", flightController.getFlightServiceTax);
 router.post("/getFlightPreBook", flightController.getFlightPreBook);
 router.post("/getFlightBook", flightController.getFlightBook);
 router.post("/getFlightBookDetails", flightController.getFlightBookDetails);
+router.post("/getFlightsListmobile", flightController.getFlightsListmobile);
 
 module.exports = router;
