@@ -571,6 +571,179 @@ exports.myBookings = async (req, res) => {
   }
 };
 
+// Edit Traveller
+exports.editTraveller = async (req, res) => {
+  console.log("Edit Passenger API triggered..");
+  
+  try {
+    const { passengerId } = req.params;
+    if (!passengerId) {
+      return res.status(400).json({ success: false, message: "Passenger ID is required" });
+    }
+
+    const getUserQuery = `SELECT user_id FROM users WHERE email = ?`;
+    const [userResult] = await new Promise((resolve, reject) => {
+      connection.query(getUserQuery, [req.user.email], (err, results) => {
+        if (err) reject(err);
+        else resolve(results);
+      });
+    }).catch(err => { throw err; });
+
+    if (!userResult) {
+      return res.status(404).json({ success: false, message: "User not found" });
+    }
+
+    const user_id = userResult.user_id;
+    
+    // Verify the passenger belongs to the user
+    const verifyQuery = `SELECT passengerId FROM passengers WHERE passengerId = ? AND user_id = ?`;
+    const [passenger] = await new Promise((resolve, reject) => {
+      connection.query(verifyQuery, [passengerId, user_id], (err, results) => {
+        if (err) reject(err);
+        else resolve(results);
+      });
+    }).catch(err => { 
+      console.error("Error verifying passenger:", err);
+      throw new Error("Error verifying passenger ownership");
+    });
+
+    if (!passenger) {
+      await new Promise((resolve) => connection.rollback(() => resolve()));
+      return res.status(404).json({ success: false, message: "Passenger not found or access denied" });
+    }
+
+    const {
+      firstname, mobile, dob,
+      passengerName, passengerAge, passengerMobileNumber,
+      passengerGender, passengerBerthChoice, passengerBedrollChoice,
+      passengerNationality, country, foodPreference,
+      contact_email, address
+    } = req.body;
+
+    // Prepare update fields and values
+    const updateFields = [];
+    const values = [];
+
+    if (passengerName || firstname) {
+      updateFields.push("passengerName = ?");
+      values.push(passengerName || firstname);
+    }
+
+    if (passengerAge || dob) {
+      let age = passengerAge;
+      if (!age && dob) {
+        const birthDate = new Date(dob);
+        const today = new Date();
+        age = today.getFullYear() - birthDate.getFullYear();
+        const m = today.getMonth() - birthDate.getMonth();
+        if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) age--;
+      }
+      updateFields.push("passengerAge = ?", "pasenger_dob = ?");
+      values.push(age, dob || null);
+    }
+
+    if (passengerMobileNumber || mobile) {
+      updateFields.push("passengerMobileNumber = ?");
+      values.push(passengerMobileNumber || mobile);
+    }
+
+    if (passengerGender) {
+      const gender = passengerGender.toString().toUpperCase();
+      const formattedGender = gender === 'MALE' || gender === 'M' ? 'M' :
+                           gender === 'FEMALE' || gender === 'F' ? 'F' : gender;
+      updateFields.push("passengerGender = ?");
+      values.push(formattedGender);
+    }
+
+    if (passengerBerthChoice !== undefined) {
+      updateFields.push("passengerBerthChoice = ?");
+      values.push(passengerBerthChoice);
+    }
+
+    if (passengerBedrollChoice !== undefined) {
+      updateFields.push("passengerBedrollChoice = ?");
+      values.push(passengerBedrollChoice ? 1 : 0);
+    }
+
+    const nationality = passengerNationality || country;
+    if (nationality) {
+      updateFields.push("passengerNationality = ?");
+      values.push(nationality);
+    }
+
+    if (foodPreference) {
+      updateFields.push("passengerFoodChoice = ?");
+      values.push(foodPreference);
+    }
+
+    if (contact_email !== undefined) {
+      updateFields.push("contact_email = ?");
+      values.push(contact_email || null);
+    }
+
+    if (address !== undefined) {
+      updateFields.push("address = ?");
+      values.push(address || null);
+    }
+
+    if (updateFields.length === 0) {
+      return res.status(400).json({ success: false, message: "No valid fields to update" });
+    }
+
+    // Add passengerId for WHERE clause
+    values.push(passengerId, user_id);
+
+    const updateQuery = `
+      UPDATE passengers 
+      SET ${updateFields.join(', ')}
+      WHERE passengerId = ? AND user_id = ?
+    `;
+
+    await new Promise((resolve, reject) => {
+      connection.query(updateQuery, values, (err, result) => {
+        if (err) {
+          console.error("Error updating passenger:", err);
+          return reject(err);
+        }
+        if (result.affectedRows === 0) {
+          return reject(new Error("No rows were updated"));
+        }
+        resolve();
+      });
+    });
+
+    return res.status(200).json({ 
+      success: true, 
+      message: "Passenger updated successfully",
+      passengerId: passengerId
+    });
+
+  } catch (error) {
+    console.error("Error in editTraveller:", error);
+    
+    // Handle specific error cases
+    if (error.message.includes("ER_DUP_ENTRY") || error.message.includes("Duplicate entry")) {
+      return res.status(409).json({ 
+        success: false, 
+        message: "A passenger with similar details already exists" 
+      });
+    }
+    
+    if (error.message === "No rows were updated") {
+      return res.status(404).json({
+        success: false,
+        message: "Passenger not found or no changes were made"
+      });
+    }
+    
+    return res.status(500).json({ 
+      success: false, 
+      message: "An error occurred while updating passenger",
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
+  }
+};
+
 // Add Traveller
 exports.addTraveller = async (req, res) => {
   console.log("Passenger API triggered..");
@@ -588,7 +761,8 @@ exports.addTraveller = async (req, res) => {
         firstname, mobile, dob,
         passengerName, passengerAge, passengerMobileNumber,
         passengerGender, passengerBerthChoice, passengerBedrollChoice,
-        passengerNationality, country, foodPreference
+        passengerNationality, country, foodPreference,
+        contact_email, address
       } = req.body;
 
       const name = passengerName || firstname;
@@ -615,14 +789,18 @@ exports.addTraveller = async (req, res) => {
 
       const insertQuery = `
         INSERT INTO passengers (
-          user_id, passengerName, passengerMobileNumber, pasenger_dob, passengerAge,
-          passengerGender, passengerBerthChoice, passengerBedrollChoice, passengerNationality, passengerFoodChoice
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          user_id, passengerName, passengerAge, passengerGender, 
+          passengerMobileNumber, passengerBerthChoice, passengerBedrollChoice, 
+          passengerNationality, passengerFoodChoice, pasenger_dob,
+          contact_email, address
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `;
 
       const values = [
-        user_id, name, phoneNumber, dob, age,
-        formattedGender, passengerBerthChoice, bedrollChoice, nationality, foodPreference
+        user_id, name, age, formattedGender,
+        phoneNumber, passengerBerthChoice, bedrollChoice,
+        nationality, foodPreference, dob || null,
+        contact_email || null, address || null
       ];
 
       connection.query(insertQuery, values, (insertErr, insertResults) => {
@@ -660,7 +838,9 @@ exports.getTravelers = async (req, res) => {
           country: traveler.passengerNationality || null,
           passengerMobileNumber: traveler.passengerMobileNumber || null,
           dob: traveler.pasenger_dob || null,
-          passengerFoodChoice: traveler.foodPreference || null
+          passengerFoodChoice: traveler.foodPreference || null,
+          contact_email: traveler.contact_email || null,
+          address: traveler.address || null
         }));
 
         res.status(200).json(mappedTravelers);
