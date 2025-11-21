@@ -43,9 +43,15 @@ exports.easebuzzPayment = async (req, res) => {
       hash,
     });
 
+    // ✅ Determine payment URL based on environment
+    const isProduction = process.env.EASEBUZZ_ENV === 'production';
+    const paymentBaseUrl = isProduction 
+      ? 'https://pay.easebuzz.in'
+      : 'https://testpay.easebuzz.in';
+
     // ✅ POST to Easebuzz payment API
     const response = await axios.post(
-      "https://testpay.easebuzz.in/payment/initiateLink",
+      `${paymentBaseUrl}/payment/initiateLink`,
       formData,
       {
         headers: {
@@ -57,11 +63,36 @@ exports.easebuzzPayment = async (req, res) => {
 
     console.log("💳 Easebuzz Response:", response.data);
 
-    res.status(200).json({
-      success: true,
-      message: "Payment initiated successfully",
-      data: response.data,
-    });
+    // ✅ Check if payment initiation was successful
+    if (response && response.data && (response.data.status === 1 || response.data.status === '1')) {
+      const accessKey = response.data.data;
+      
+      if (accessKey) {
+        // ✅ Return payment URL for frontend to redirect (backend constructs the URL)
+        const paymentUrl = `${paymentBaseUrl}/pay/${accessKey}`;
+        console.log("✅ Payment URL generated:", paymentUrl);
+        return res.status(200).json({
+          success: true,
+          message: "Payment initiated successfully",
+          paymentUrl: paymentUrl, // Frontend will redirect to this URL
+          data: response.data
+        });
+      } else {
+        console.error("❌ No access key received from Easebuzz");
+        return res.status(500).json({
+          success: false,
+          error: "Payment initiation failed: No access key received"
+        });
+      }
+    } else {
+      // ✅ Payment initiation failed
+      const errorMsg = response?.data?.data || response?.data?.message || "Payment initiation failed";
+      console.error("❌ Payment initiation failed:", errorMsg);
+      return res.status(500).json({
+        success: false,
+        error: errorMsg
+      });
+    }
   } catch (error) {
     console.error("❌ Easebuzz Error:", error.message);
     res.status(500).json({
