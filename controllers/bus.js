@@ -522,12 +522,12 @@ exports.GetBookingDetails = async (req, res) => {
     console.log("1.Request body is working... ", req.body); // Better logging
     
     // Validate required parameters
-    const { EndUserIp, TokenId, TraceId, BusId, IsBaseCurrencyRequired } = req.body;
+    const { EndUserIp, TokenId, BusId, IsBaseCurrencyRequired } = req.body;
     
-    if (!EndUserIp || !TokenId || !TraceId || !BusId) {
-        console.error("Missing required parameters:", { EndUserIp, TokenId, TraceId, BusId });
+    if (!EndUserIp || !TokenId || !BusId) {
+        console.error("Missing required parameters:", { EndUserIp, TokenId, BusId });
         return res.status(400).json({ 
-            message: "Missing required parameters: EndUserIp, TokenId, TraceId, and BusId are required" 
+            message: "Missing required parameters: EndUserIp, TokenId, and BusId are required" 
         });
     }
     
@@ -535,7 +535,6 @@ exports.GetBookingDetails = async (req, res) => {
     const requestData = {
         EndUserIp,
         TokenId,
-        TraceId,
         BusId,
         IsBaseCurrencyRequired: IsBaseCurrencyRequired !== undefined ? IsBaseCurrencyRequired : false
     };
@@ -573,7 +572,8 @@ exports.GetBookingDetails = async (req, res) => {
 }
 
 
-    exports.busBookingCancel=async(req,res)=>{
+exports.busBookingCancel=async(req,res)=>{
+    
     console.log("1.Bus cancel is working... ");
     console.log("1.Request body is working... ", req.body);
     
@@ -617,33 +617,38 @@ exports.createBusBooking = async (req, res) => {
     try {
         const {
             user_id,
-            busData,
-            blockData,
-            contactDetails,
-            addressDetails,
-            travelerDetails,
-            fareDetails,
-            searchResponse // Add this to get the search response data
+            busBookingDetails, // Single object containing all booking details from GetBookingDetailResult
+            payment_status, // Easebuzz payment status
+            payment_transaction_id // Easebuzz transaction ID
         } = req.body;
 
-        // Parse JSON strings to objects if they are strings
-        const parsedBusData = typeof busData === 'string' ? JSON.parse(busData) : busData;
-        const parsedBlockData = typeof blockData === 'string' ? JSON.parse(blockData) : blockData;
-        const parsedContactDetails = typeof contactDetails === 'string' ? JSON.parse(contactDetails) : contactDetails;
-        const parsedAddressDetails = typeof addressDetails === 'string' ? JSON.parse(addressDetails) : addressDetails;
-        const parsedTravelerDetails = typeof travelerDetails === 'string' ? JSON.parse(travelerDetails) : travelerDetails;
-        const parsedFareDetails = typeof fareDetails === 'string' ? JSON.parse(fareDetails) : fareDetails;
-        const parsedSearchResponse = typeof searchResponse === 'string' ? JSON.parse(searchResponse) : searchResponse;
+        
 
-        console.log('📥 Received booking data:', {
+
+        // Parse JSON string to object if it's a string
+        const parsedBookingDetails = typeof busBookingDetails === 'string' 
+            ? JSON.parse(busBookingDetails) 
+            : busBookingDetails;
+
+        // Extract Itinerary from GetBookingDetailResult structure
+        const itinerary = parsedBookingDetails?.GetBookingDetailResult?.Itinerary || 
+                         parsedBookingDetails?.Itinerary || 
+                         parsedBookingDetails;
+
+        if (!itinerary) {
+            return res.status(400).json({ 
+                message: 'Invalid booking details. Itinerary data is missing.',
+                received: Object.keys(parsedBookingDetails || {})
+            });
+        }
+
+        console.log('📥 Received busBookingDetails:', {
             user_id,
-            busData: parsedBusData ? 'Present' : 'Missing',
-            blockData: parsedBlockData ? 'Present' : 'Missing',
-            contactDetails: parsedContactDetails ? 'Present' : 'Missing',
-            addressDetails: parsedAddressDetails ? 'Present' : 'Missing',
-            travelerDetails: parsedTravelerDetails ? Object.keys(parsedTravelerDetails).length + ' travelers' : 'Missing',
-            fareDetails: parsedFareDetails ? 'Present' : 'Missing',
-            searchResponse: parsedSearchResponse ? 'Present' : 'Missing'
+            hasGetBookingDetailResult: !!parsedBookingDetails?.GetBookingDetailResult,
+            hasItinerary: !!itinerary,
+            ticketNo: itinerary?.TicketNo,
+            busId: itinerary?.BusId,
+            passengerCount: itinerary?.Passenger?.length || 0
         });
 
         // Helper function to safely get values
@@ -672,45 +677,122 @@ exports.createBusBooking = async (req, res) => {
             return stringValue.length > maxLength ? stringValue.substring(0, maxLength).trim() : stringValue;
         };
 
-        // Helper function to convert datetime format
+        // Helper function to convert datetime format (preserves time without timezone conversion)
         const convertToMySQLDateTime = (dateTimeString) => {
             if (!dateTimeString) return null;
             
             try {
-                // Handle different date formats
-                let date;
+                // If already in MySQL format (YYYY-MM-DD HH:MM:SS), return as-is
+                if (/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/.test(dateTimeString)) {
+                    return dateTimeString;
+                }
+                
+                // Handle ISO format (YYYY-MM-DDTHH:MM:SS or YYYY-MM-DDTHH:MM:SS.sssZ)
+                if (dateTimeString.includes('T')) {
+                    // Remove timezone info and milliseconds, then replace T with space
+                    const cleanDateTime = dateTimeString.replace(/Z$/, '').split('.')[0];
+                    // Extract date and time parts without timezone conversion
+                    const [datePart, timePart] = cleanDateTime.split('T');
+                    if (datePart && timePart) {
+                        return `${datePart} ${timePart}`;
+                    }
+                }
+                
+                // Handle MM/DD/YYYY HH:MM:SS format
                 if (dateTimeString.includes('/')) {
-                    // Format: MM/DD/YYYY HH:MM:SS
                     const parts = dateTimeString.split(' ');
                     const dateParts = parts[0].split('/');
                     const timeParts = parts[1] ? parts[1].split(':') : ['00', '00', '00'];
                     
-                    date = new Date(
-                        parseInt(dateParts[2]), // year
-                        parseInt(dateParts[0]) - 1, // month (0-indexed)
-                        parseInt(dateParts[1]), // day
-                        parseInt(timeParts[0]), // hour
-                        parseInt(timeParts[1]), // minute
-                        parseInt(timeParts[2]) // second
-                    );
-                } else {
-                    // Try parsing as ISO string or other formats
-                    date = new Date(dateTimeString);
+                    // Format as YYYY-MM-DD HH:MM:SS
+                    const year = dateParts[2];
+                    const month = dateParts[0].padStart(2, '0');
+                    const day = dateParts[1].padStart(2, '0');
+                    const hour = timeParts[0].padStart(2, '0');
+                    const minute = timeParts[1].padStart(2, '0');
+                    const second = timeParts[2] ? timeParts[2].padStart(2, '0') : '00';
+                    
+                    return `${year}-${month}-${day} ${hour}:${minute}:${second}`;
                 }
                 
-                if (isNaN(date.getTime())) {
-                    console.warn('Invalid date:', dateTimeString);
-                    return null;
+                // Handle time-only format (HH:MM:SS or HH:MM) - combine with journey date
+                if (/^\d{1,2}:\d{2}(:\d{2})?$/.test(dateTimeString)) {
+                    const journeyDate = itinerary?.DateOfJourney || itinerary?.DepartureTime;
+                    if (journeyDate) {
+                        let datePart;
+                        if (journeyDate.includes('T')) {
+                            datePart = journeyDate.split('T')[0];
+                        } else if (journeyDate.includes(' ')) {
+                            datePart = journeyDate.split(' ')[0];
+                        } else if (journeyDate.includes('/')) {
+                            const parts = journeyDate.split('/');
+                            datePart = `${parts[2]}-${parts[0].padStart(2, '0')}-${parts[1].padStart(2, '0')}`;
+                        } else {
+                            datePart = journeyDate.split(' ')[0];
+                        }
+                        const timePart = dateTimeString.padEnd(8, ':00');
+                        return `${datePart} ${timePart}`;
+                    }
                 }
                 
-                return date.toISOString().slice(0, 19).replace('T', ' ');
+                // Fallback: try parsing as Date and format manually
+                // Note: For ISO strings with timezone, extract directly from string to preserve original time
+                if (/^\d{4}-\d{2}-\d{2}/.test(dateTimeString)) {
+                    // Looks like a date string, try to extract date and time parts directly
+                    const match = dateTimeString.match(/^(\d{4}-\d{2}-\d{2})(?:T| )(\d{2}:\d{2}:\d{2})/);
+                    if (match) {
+                        return `${match[1]} ${match[2]}`;
+                    }
+                }
+                
+                // Last resort: use Date object (may have timezone issues)
+                const date = new Date(dateTimeString);
+                if (!isNaN(date.getTime())) {
+                    // Use UTC components to preserve the time as stored (assuming UTC in database)
+                    const year = date.getUTCFullYear();
+                    const month = String(date.getUTCMonth() + 1).padStart(2, '0');
+                    const day = String(date.getUTCDate()).padStart(2, '0');
+                    const hour = String(date.getUTCHours()).padStart(2, '0');
+                    const minute = String(date.getUTCMinutes()).padStart(2, '0');
+                    const second = String(date.getUTCSeconds()).padStart(2, '0');
+                    return `${year}-${month}-${day} ${hour}:${minute}:${second}`;
+                }
+                
+                console.warn('Invalid date format:', dateTimeString);
+                return null;
             } catch (error) {
                 console.error('Error converting datetime:', dateTimeString, error);
                 return null;
             }
         };
 
-        // STEP 1: Get user_id from users table
+        // STEP 1: Extract passenger details from itinerary (needed for user lookup)
+        const passengers = itinerary?.Passenger || [];
+        const numberOfPassengers = passengers.length || itinerary?.NoOfSeats || 0;
+        
+        // Get lead passenger (first passenger with LeadPassenger flag or first passenger)
+        const leadPassengerData = passengers.find(p => p.LeadPassenger) || passengers[0] || null;
+        
+        let leadPassenger = null;
+        if (leadPassengerData) {
+            leadPassenger = {
+                firstName: leadPassengerData.FirstName || '',
+                lastName: leadPassengerData.LastName || '',
+                age: leadPassengerData.Age || 0,
+                gender: leadPassengerData.Gender === 1 ? 'Male' : leadPassengerData.Gender === 2 ? 'Female' : 'Other',
+                phone: leadPassengerData.Phoneno || '',
+                email: leadPassengerData.Email || '',
+                title: leadPassengerData.Title || '',
+                address: leadPassengerData.Address || '',
+                city: leadPassengerData.City || '',
+                state: leadPassengerData.State || ''
+            };
+        }
+
+        console.log('👤 Lead passenger:', leadPassenger);
+        console.log('👥 Number of passengers:', numberOfPassengers);
+
+        // STEP 2: Get user_id from users table
         let finalUserId = null;
 
         // Method 1: If user_id is provided in request, validate it exists
@@ -725,15 +807,15 @@ exports.createBusBooking = async (req, res) => {
             }
         }
 
-        // Method 2: If no user_id or invalid, try to get from email
-        if (!finalUserId && contactDetails?.email) {
+        // Method 2: If no user_id or invalid, try to get from lead passenger email
+        if (!finalUserId && leadPassenger?.email) {
             const userQuery = 'SELECT user_id, userName, firstName, lastName, email FROM users WHERE email = ?';
-            const [users] = await connection.promise().execute(userQuery, [contactDetails.email]);
+            const [users] = await connection.promise().execute(userQuery, [leadPassenger.email]);
             if (users.length > 0) {
                 finalUserId = users[0].user_id;
                 console.log('✅ Found user_id from email:', finalUserId, 'User:', users[0]);
             } else {
-                console.log('❌ No user found with email:', contactDetails.email);
+                console.log('❌ No user found with email:', leadPassenger.email);
             }
         }
 
@@ -752,7 +834,7 @@ exports.createBusBooking = async (req, res) => {
             }
         }
 
-        // STEP 2: Validate the final user_id exists
+        // STEP 3: Validate the final user_id exists
         const userValidationQuery = 'SELECT user_id, userName, firstName, lastName, email FROM users WHERE user_id = ?';
         const [userValidation] = await connection.promise().execute(userValidationQuery, [finalUserId]);
         
@@ -766,176 +848,89 @@ exports.createBusBooking = async (req, res) => {
 
         console.log('✅ Final user for booking:', userValidation[0]);
 
-        // STEP 3: Get lead passenger details (first traveler)
-        const travelerKeys = Object.keys(parsedTravelerDetails || {});
-        const leadPassenger = travelerKeys.length > 0 ? parsedTravelerDetails[travelerKeys[0]] : null;
-        const numberOfPassengers = travelerKeys.length;
-
-        console.log('👤 Lead passenger:', leadPassenger);
-        console.log('👥 Number of passengers:', numberOfPassengers);
-
-        // STEP 4: Extract origin and destination from search response
-        let origin = '';
-        let destination = '';
-
-        // First priority: Get from search response (this contains the actual city names)
-        if (parsedSearchResponse?.BusSearchResult?.Origin) {
-            origin = parsedSearchResponse.BusSearchResult.Origin;
-            console.log('📍 Found origin from search response:', origin);
-        }
-
-        if (parsedSearchResponse?.BusSearchResult?.Destination) {
-            destination = parsedSearchResponse.BusSearchResult.Destination;
-            console.log('📍 Found destination from search response:', destination);
-        }
-
-        // Second priority: Get from contactDetails (if passed from frontend)
-        if (!origin && parsedContactDetails?.fromCityName) {
-            origin = parsedContactDetails.fromCityName;
-            console.log('📍 Found origin from contactDetails (fromCityName):', origin);
-        } else if (!origin && parsedContactDetails?.origin) {
-            origin = parsedContactDetails.origin;
-            console.log('📍 Found origin from contactDetails (origin):', origin);
-        }
-
-        if (!destination && parsedContactDetails?.toCityName) {
-            destination = parsedContactDetails.toCityName;
-            console.log('📍 Found destination from contactDetails (toCityName):', destination);
-        } else if (!destination && parsedContactDetails?.destination) {
-            destination = parsedContactDetails.destination;
-            console.log('📍 Found destination from contactDetails (destination):', destination);
-        }
-
-        // Third priority: Get from busData (API response data)
-        if (!origin && parsedBusData?.Origin) {
-            origin = parsedBusData.Origin;
-            console.log('📍 Found origin from busData.Origin:', origin);
-        } else if (!origin && parsedBusData?.OriginName) {
-            origin = parsedBusData.OriginName;
-            console.log('📍 Found origin from busData.OriginName:', origin);
-        }
-
-        if (!destination && parsedBusData?.Destination) {
-            destination = parsedBusData.Destination;
-            console.log('📍 Found destination from busData.Destination:', destination);
-        } else if (!destination && parsedBusData?.DestinationName) {
-            destination = parsedBusData.DestinationName;
-            console.log('📍 Found destination from busData.DestinationName:', destination);
-        }
-
-        // Fourth priority: Get from blockData
-        if (!origin && parsedBlockData?.Origin) {
-            origin = parsedBlockData.Origin;
-            console.log('📍 Found origin from blockData.Origin:', origin);
-        }
-
-        if (!destination && parsedBlockData?.Destination) {
-            destination = parsedBlockData.Destination;
-            console.log('📍 Found destination from blockData.Destination:', destination);
-        }
-
-        // Fifth priority: Use boarding/dropping points as fallback
-        if (!origin && parsedBlockData?.BoardingPointdetails?.CityPointName) {
-            origin = parsedBlockData.BoardingPointdetails.CityPointName;
-            console.log('📍 Using boarding point as origin fallback:', origin);
-        }
-
-        if (!destination && parsedBlockData?.DroppingPointdetails?.CityPointName) {
-            destination = parsedBlockData.DroppingPointdetails.CityPointName;
-            console.log('📍 Using dropping point as destination fallback:', destination);
-        }
-
-        // Sixth priority: Try from busData boarding/dropping points
-        if (!origin && parsedBusData?.BoardingPointsDetails && parsedBusData.BoardingPointsDetails.length > 0) {
-            origin = parsedBusData.BoardingPointsDetails[0].CityPointName || '';
-            console.log('📍 Using busData boarding point as origin fallback:', origin);
-        }
-
-        if (!destination && parsedBusData?.DroppingPointsDetails && parsedBusData.DroppingPointsDetails.length > 0) {
-            destination = parsedBusData.DroppingPointsDetails[0].CityPointName || '';
-            console.log('📍 Using busData dropping point as destination fallback:', destination);
-        }
+        // STEP 4: Extract origin and destination from itinerary
+        const origin = itinerary?.Origin || '';
+        const destination = itinerary?.Destination || '';
 
         // Validate that we have both origin and destination
         if (!origin) {
-            console.log('❌ No origin found in any data source');
-            console.log('🔍 Debug - searchResponse keys:', Object.keys(parsedSearchResponse || {}));
-            console.log('🔍 Debug - contactDetails keys:', Object.keys(parsedContactDetails || {}));
-            console.log('🔍 Debug - busData keys:', Object.keys(parsedBusData || {}));
-            console.log('🔍 Debug - blockData keys:', Object.keys(parsedBlockData || {}));
+            console.log('❌ No origin found in itinerary');
             return res.status(400).json({ message: 'Origin city not found in booking data' });
         }
         if (!destination) {
-            console.log('❌ No destination found in any data source');
+            console.log('❌ No destination found in itinerary');
             return res.status(400).json({ message: 'Destination city not found in booking data' });
         }
 
-        console.log('📍 Final extracted origin (city):', origin);
-        console.log('📍 Final extracted destination (city):', destination);
+        console.log('📍 Origin:', origin);
+        console.log('📍 Destination:', destination);
 
-        // STEP 5: Insert into bus table with lead passenger details and passenger count
+        // STEP 5: Insert into bus table with all booking details from itinerary
         const busQuery = `
             INSERT INTO bus (
                 user_id, origin, destination, journey_date,
                 travel_name, bus_type, bus_id, departure_time, arrival_time,
                 total_seats, available_seats, no_of_seats_booked,
-                base_price, published_price, total_amount, invoice_amount,
+                base_price, published_price, Offered_Price_RoundedOff, invoice_amount,
                 boarding_point_location, boarding_point_time,
                 dropping_point_location, dropping_point_time,
                 booking_status, booking_reference,
                 ticket_no, travel_operator_pnr, invoice_number,
                 payment_status, payment_method, transaction_id,
-                razorpay_order_id, razorpay_payment_id,
+                easebuzz_order_id, easebuzz_payment_id,
                 contact_email, contact_mobile, address, city, state, pincode
             ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         `;
 
         const bookingReference = `BUS${Date.now()}`;
         
-        // Use the collected user_id in bus table - EXACTLY 39 values
+        // Extract price information from itinerary
+        const price = itinerary?.Price || {};
+        const boardingPoint = itinerary?.BoardingPointdetails || {};
+        const droppingPoint = itinerary?.DroppingPointdetails || {};
+        
+        // Use the collected user_id in bus table - EXACTLY 36 values
         const busValues = [
             finalUserId, // 1 - user_id
-            origin, // 2 - origin (city name like "Bangalore", "Chennai")
-            destination, // 3 - destination (city name like "Hyderabad", "Mumbai")
-            safeValue(parsedBlockData?.DepartureTime ? new Date(parsedBlockData.DepartureTime).toISOString().split('T')[0] : null), // 4 - journey_date
-            safeValue(parsedBlockData?.TravelName || parsedBusData?.TravelName, ''), // 5 - travel_name
-            safeValue(parsedBlockData?.BusType || parsedBusData?.BusType, ''), // 6 - bus_type
-            safeValue(parsedBusData?.bus_id || null), // 7 - bus_id
-            convertToMySQLDateTime(parsedBlockData?.DepartureTime), // 8 - departure_time
-            convertToMySQLDateTime(parsedBlockData?.ArrivalTime), // 9 - arrival_time
-            safeValue(parsedBusData?.total_seats || parsedBusData?.AvailableSeats || 0), // 10 - total_seats
-            safeValue(parsedBusData?.AvailableSeats || 0), // 11 - available_seats
-            numberOfPassengers, // 12 - no_of_seats_booked (number of passengers)
-            safeValue(parsedFareDetails?.baseFare, 0), // 13 - base_price
-            safeValue(parsedFareDetails?.baseFare, 0), // 14 - published_price
-            safeValue(parsedFareDetails?.total, 0), // 15 - total_amount
-            safeValue(parsedFareDetails?.total, 0), // 16 - invoice_amount
-            safeValue(parsedBlockData?.BoardingPointdetails?.CityPointLocation || 
-                     parsedBusData?.BoardingPointsDetails?.[0]?.CityPointLocation || 
-                     ''), // 17 - boarding_point_location
-            convertToMySQLDateTime(parsedBlockData?.BoardingPointdetails?.CityPointTime), // 18 - boarding_point_time
-            safeValue(parsedBlockData?.DroppingPointdetails?.CityPointLocation || 
-                     parsedBusData?.DroppingPointsDetails?.[0]?.CityPointLocation || 
-                     ''), // 19 - dropping_point_location
-            convertToMySQLDateTime(parsedBlockData?.DroppingPointdetails?.CityPointTime || 
-                                 parsedBusData?.DroppingPointsDetails?.[0]?.CityPointTime || 
-                                 parsedBlockData?.ArrivalTime), // 20 - dropping_point_time
-            'Pending', // 21 - booking_status (pending until payment)
+            origin, // 2 - origin
+            destination, // 3 - destination
+            safeValue(
+                itinerary?.DateOfJourney ? new Date(itinerary.DateOfJourney).toISOString().split('T')[0] : 
+                itinerary?.DepartureTime ? new Date(itinerary.DepartureTime).toISOString().split('T')[0] : 
+                null
+            ), // 4 - journey_date
+            safeValue(itinerary?.TravelName, ''), // 5 - travel_name
+            safeValue(itinerary?.BusType, ''), // 6 - bus_type
+            safeValue(itinerary?.BusId, null), // 7 - bus_id
+            convertToMySQLDateTime(itinerary?.DepartureTime), // 8 - departure_time
+            convertToMySQLDateTime(itinerary?.ArrivalTime), // 9 - arrival_time
+            safeValue(itinerary?.NoOfSeats || numberOfPassengers, 0), // 10 - total_seats
+            safeValue(0, 0), // 11 - available_seats (not available in booking details)
+            numberOfPassengers, // 12 - no_of_seats_booked
+            safeValue(price?.BasePrice, 0), // 13 - base_price
+            safeValue(price?.PublishedPriceRoundedOff || price?.PublishedPrice, 0), // 14 - published_price
+            safeValue(price?.OfferedPriceRoundedOff || price?.OfferedPrice || price?.PublishedPriceRoundedOff || price?.PublishedPrice, 0), // 15 - total_amount
+            safeValue(itinerary?.InvoiceAmount || price?.OfferedPriceRoundedOff || price?.OfferedPrice || price?.PublishedPriceRoundedOff || price?.PublishedPrice, 0), // 16 - invoice_amount
+            safeValue(boardingPoint?.CityPointLocation || boardingPoint?.CityPointName, ''), // 17 - boarding_point_location
+            convertToMySQLDateTime(boardingPoint?.CityPointTime || itinerary?.DepartureTime), // 18 - boarding_point_time
+            safeValue(droppingPoint?.CityPointLocation || droppingPoint?.CityPointName || '', ''), // 19 - dropping_point_location
+            convertToMySQLDateTime(droppingPoint?.CityPointTime || itinerary?.ArrivalTime), // 20 - dropping_point_time
+            safeValue(itinerary?.Status === 2 ? 'Confirmed' : 'Pending', 'Pending'), // 21 - booking_status
             bookingReference, // 22 - booking_reference
-            null, // 23 - ticket_no (null until confirmed)
-            null, // 24 - travel_operator_pnr (null until confirmed)
-            null, // 25 - invoice_number (null until confirmed)
-            'Pending', // 26 - payment_status (pending until payment completed)
-            null, // 27 - payment_method (null until payment)
-            null, // 28 - transaction_id (null until payment)
-            null, // 29 - razorpay_order_id (null until payment)
-            null, // 30 - razorpay_payment_id (null until payment)
-            safeValue(parsedContactDetails?.email, ''), // 31 - contact_email (lead passenger)
-            safeValue(parsedContactDetails?.mobile, ''), // 32 - contact_mobile (lead passenger)
-            safeValue(parsedAddressDetails?.address), // 33 - address (lead passenger)
-            safeValue(parsedAddressDetails?.city), // 34 - city (lead passenger)
-            safeValue(parsedAddressDetails?.state), // 35 - state (lead passenger)
-            safeValue(parsedAddressDetails?.pincode) // 36 - pincode (lead passenger)
+            safeValue(itinerary?.TicketNo, null), // 23 - ticket_no
+            safeValue(itinerary?.TravelOperatorPNR, null), // 24 - travel_operator_pnr
+            safeValue(itinerary?.InvoiceNumber, null), // 25 - invoice_number
+            safeValue(payment_status, 'Pending'), // 26 - payment_status
+            safeValue(payment_status === 'Completed' ? 'Easebuzz' : null, null), // 27 - payment_method
+            safeValue(payment_transaction_id, null), // 28 - transaction_id
+            null, // 29 - razorpay_order_id
+            null, // 30 - razorpay_payment_id
+            safeValue(leadPassenger?.email, ''), // 31 - contact_email
+            safeValue(leadPassenger?.phone, ''), // 32 - contact_mobile
+            safeValue(leadPassenger?.address, null), // 33 - address
+            safeValue(leadPassenger?.city, null), // 34 - city
+            safeValue(leadPassenger?.state, null), // 35 - state
+            null // 36 - pincode (not available in itinerary structure)
         ];
 
         console.log('🚌 Bus values to insert with user_id:', finalUserId);
@@ -949,7 +944,7 @@ exports.createBusBooking = async (req, res) => {
         const booking_id = busResult.insertId;
         console.log('✅ Bus booking created with booking_id:', booking_id);
 
-        // STEP 6: Insert all passengers in passengers table
+        // STEP 6: Insert all passengers in passengers table from itinerary
         const passengerQuery = `
             INSERT INTO passengers (
                 user_id, booking_id, passengerName, passengerAge, passengerGender,
@@ -959,45 +954,48 @@ exports.createBusBooking = async (req, res) => {
             ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         `;
 
-        for (let i = 0; i < travelerKeys.length; i++) {
-            const seatLabel = travelerKeys[i];
-            const traveler = parsedTravelerDetails[seatLabel];
-            const isLeadPassenger = i === 0;
+        for (let i = 0; i < passengers.length; i++) {
+            const passenger = passengers[i];
+            const isLeadPassenger = passenger?.LeadPassenger || i === 0;
 
-            // Fix gender formatting - ensure it's a single character
+            // Format gender - convert numeric to single character
             let formattedGender = 'M'; // default
-            if (traveler?.gender) {
-                const gender = traveler.gender.toString().toUpperCase();
-                if (gender === 'MALE' || gender === 'M') {
+            if (passenger?.Gender !== undefined && passenger?.Gender !== null) {
+                if (passenger.Gender === 1) {
                     formattedGender = 'M';
-                } else if (gender === 'FEMALE' || gender === 'F') {
+                } else if (passenger.Gender === 2) {
                     formattedGender = 'F';
                 } else {
                     formattedGender = 'M'; // default
                 }
             }
 
+            // Extract seat information
+            const seat = passenger?.Seat || {};
+            const seatName = seat?.SeatName || '';
+            const seatFare = seat?.SeatFare || seat?.Price?.PublishedPriceRoundedOff || seat?.Price?.PublishedPrice || 0;
+
             const passengerValues = [
                 finalUserId, // Same user_id from users table
                 booking_id,
-                safePassengerName(traveler?.firstName, traveler?.lastName),
-                safeValue(traveler?.age, 0),
-                formattedGender, // Fixed: Use formatted gender (single character)
-                safeTruncate(traveler?.idType, 50),
-                safeTruncate(traveler?.idNumber, 50),
-                safeValue(parsedContactDetails?.mobile, ''),
-                seatLabel,
-                safeValue(parsedFareDetails?.baseFare ? parsedFareDetails.baseFare / travelerKeys.length : 0),
+                safePassengerName(passenger?.FirstName, passenger?.LastName),
+                safeValue(passenger?.Age, 0),
+                formattedGender,
+                safeTruncate(passenger?.IdType, 50),
+                safeTruncate(passenger?.IdNumber, 50),
+                safeValue(passenger?.Phoneno, ''),
+                seatName,
+                safeValue(seatFare, 0),
                 isLeadPassenger,
-                safeTruncate(traveler?.title, 20, ''),
-                isLeadPassenger ? safeTruncate(parsedContactDetails?.email, 100) : null,
-                isLeadPassenger ? safeTruncate(parsedContactDetails?.mobile, 20) : null,
-                isLeadPassenger ? safeTruncate(parsedAddressDetails?.address, 500) : null
+                safeTruncate(passenger?.Title, 20, ''),
+                isLeadPassenger ? safeTruncate(passenger?.Email, 100) : null,
+                isLeadPassenger ? safeTruncate(passenger?.Phoneno, 20) : null,
+                isLeadPassenger ? safeTruncate(passenger?.Address, 500) : null
             ];
 
-            console.log(' Passenger', i + 1, 'values with user_id:', finalUserId);
-            console.log(' Passenger name:', `"${passengerValues[2]}"`);
-            console.log(' Passenger name length:', passengerValues[2]?.length || 0, 'characters');
+            console.log('👤 Passenger', i + 1, 'values with user_id:', finalUserId);
+            console.log('👤 Passenger name:', `"${passengerValues[2]}"`);
+            console.log('👤 Passenger name length:', passengerValues[2]?.length || 0, 'characters');
             await connection.promise().execute(passengerQuery, passengerValues);
         }
 
@@ -1011,10 +1009,12 @@ exports.createBusBooking = async (req, res) => {
             user_id: finalUserId,
             user: userValidation[0],
             passenger_count: numberOfPassengers,
-            booking_status: 'Pending',
-            payment_status: 'Pending',
+            booking_status: itinerary?.Status === 2 ? 'Confirmed' : safeValue(payment_status, 'Pending') === 'Completed' ? 'Confirmed' : 'Pending',
+            payment_status: safeValue(payment_status, 'Pending'),
             origin: origin,
-            destination: destination
+            destination: destination,
+            ticket_no: itinerary?.TicketNo || null,
+            travel_operator_pnr: itinerary?.TravelOperatorPNR || null
         });
 
     } catch (error) {
@@ -1069,6 +1069,15 @@ exports.getUserBusBookings = async (req, res) => {
     try {
         const { user_id } = req.params;
         
+        console.log("Fetching bus bookings for user_id:", user_id);
+        
+        if (!user_id) {
+            return res.status(400).json({ 
+                success: false,
+                message: 'User ID is required' 
+            });
+        }
+        
         const query = `
             SELECT b.*, 
                    COUNT(p.passengerId) as passenger_count
@@ -1081,6 +1090,8 @@ exports.getUserBusBookings = async (req, res) => {
         
         const [bookings] = await connection.promise().execute(query, [user_id]);
         
+        console.log(`Found ${bookings.length} bookings for user_id: ${user_id}`);
+        
         res.status(200).json({
             success: true,
             bookings: bookings
@@ -1088,7 +1099,10 @@ exports.getUserBusBookings = async (req, res) => {
         
     } catch (error) {
         console.error('Error getting user bus bookings:', error);
-        res.status(500).json({ message: error.message });
+        res.status(500).json({ 
+            success: false,
+            message: error.message 
+        });
     }
 };
 
@@ -1131,25 +1145,52 @@ exports.getBusBookingDetails = async (req, res) => {
 exports.updateBusBookingStatus = async (req, res) => {
     try {
         const { booking_id } = req.params;
-        const { booking_status, payment_status, ticket_no, travel_operator_pnr } = req.body;
+        const { 
+            booking_status, 
+            payment_status, 
+            payment_method,
+            ticket_no, 
+            travel_operator_pnr,
+            payment_transaction_id,
+            easebuzz_payment_id
+        } = req.body;
+        
+        console.log('🔄 Updating bus booking status:', {
+            booking_id,
+            booking_status,
+            payment_status,
+            payment_method,
+            ticket_no,
+            travel_operator_pnr,
+            payment_transaction_id,
+            easebuzz_payment_id
+        });
         
         const updateQuery = `
             UPDATE bus 
             SET booking_status = ?, 
                 payment_status = ?, 
+                payment_method = COALESCE(?, payment_method),
                 ticket_no = ?, 
                 travel_operator_pnr = ?,
+                transaction_id = COALESCE(?, transaction_id),
+                easebuzz_payment_id = COALESCE(?, easebuzz_payment_id),
                 updated_at = CURRENT_TIMESTAMP
             WHERE booking_id = ?
         `;
         
         await connection.promise().execute(updateQuery, [
             booking_status, 
-            payment_status, 
+            payment_status,
+            payment_method || null,
             ticket_no, 
-            travel_operator_pnr, 
+            travel_operator_pnr,
+            payment_transaction_id || null,
+            easebuzz_payment_id || null,
             booking_id
         ]);
+        
+        console.log('✅ Bus booking status updated successfully');
         
         res.status(200).json({
             success: true,
