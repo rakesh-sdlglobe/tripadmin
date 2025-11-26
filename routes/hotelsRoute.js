@@ -14,5 +14,11 @@ router.post("/getHotelBooked", hotelController.getHotelBooked);
 router.post("/getHotelBookedDetails", hotelController.getHotelBookedDetails);
 router.post("/getHotelImages", hotelController.getHotelImages);
 router.post('/getGeoList', hotelController.getHotelsGeoList);
+router.post('/saveHotelBooking', hotelController.saveHotelBooking);
+
+// Get hotel bookings routes
+router.get('/bookings', hotelController.getAllHotelBookings);
+router.get('/bookings/user/:user_id', hotelController.getUserHotelBookings);
+router.get('/bookings/:booking_id', hotelController.getHotelBookingById);
 
 module.exports = router;

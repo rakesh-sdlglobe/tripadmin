@@ -324,6 +324,109 @@ exports.getIRCTCForgotDetails = async (req, res) => {
     }
 }
 
+exports.blockSeats = async (req, res) => {
+    try {
+        const url = "https://stagews.irctc.co.in/eticketing/webservices/tatrsvservices/seatblock";
+
+        const response = await axios.post(url, req.body, {
+            auth: auth.auth,
+            headers: apiHeaders
+        });
+
+        const bookingTransactionId = response.data?.bookingTransactionId;
+
+        // Save bookingTransactionId in DB
+        if (bookingTransactionId) {
+            await connection.query(
+                "INSERT INTO train_bookings (user_id, bookingTransactionId, status) VALUES (?, ?, ?)",
+                [req.user, bookingTransactionId, "BLOCKED"]
+            );
+        }
+
+        res.status(200).json({
+            success: true,
+            data: response.data
+        });
+
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            error: error.response?.data || error.message
+        });
+    }
+};
+
+
+exports.confirmBooking = async (req, res) => {
+    try {
+        const url = "https://stagews.irctc.co.in/eticketing/webservices/tatrsvservices/confirm";
+
+        const response = await axios.post(url, req.body, {
+            auth: auth.auth,
+            headers: apiHeaders
+        });
+
+        const agentTxnId = response.data?.agentTxnId;
+
+        if (agentTxnId) {
+            await connection.query(
+                "UPDATE train_bookings SET agentTxnId = ?, status = ? WHERE bookingTransactionId = ?",
+                [agentTxnId, "BOOKED", req.body.bookingTransactionId]
+            );
+        }
+
+        res.json({
+            success: true,
+            data: response.data
+        });
+
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            error: error.response?.data || error.message
+        });
+    }
+};
+
+
+exports.getBookingDetails = async (req, res) => {
+    try {
+        const { agentTxnId } = req.params;
+
+        if (!agentTxnId) {
+            return res.status(400).json({ message: "agentTxnId is required" });
+        }
+
+        const url = `https://stagews.irctc.co.in/eticketing/webservices/tatktservices/bookingdetails/${agentTxnId}`;
+
+        const response = await axios.get(url, {
+            auth: {
+                username: process.env.IRCTC_API_USERNAME,
+                password: process.env.IRCTC_API_PASSWORD,
+            },
+            headers: {
+                ...apiHeaders,
+                "Accept": "application/json",
+                "Cookie": req.headers.cookie // session cookie from login
+            },
+            timeout: 15000
+        });
+
+        return res.status(200).json({
+            success: true,
+            bookingDetails: response.data
+        });
+
+    } catch (error) {
+        console.error("Booking details fetch error:", error.message);
+        return res.status(500).json({
+            success: false,
+            message: "Failed to fetch booking details",
+            error: error.response?.data || error.message
+        });
+    }
+};
+
 
 
 // exports.getRazorpayOrder = async (req, res) => {
