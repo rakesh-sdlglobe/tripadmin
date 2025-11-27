@@ -12,6 +12,9 @@ router.post('/getBoardingStations', trainController.getBoardingStations);
 router.get('/getUsernameFromIRCTC/:userName',isAuth.token, trainController.getUsernameFromIRCTC);
 router.get('/getCountryList', trainController.getCountryList);
 router.post('/getForgotDetails', trainController.getIRCTCForgotDetails);
+router.post("/booking/block", trainController.blockSeats);
+router.post("/booking/confirm", trainController.confirmBooking);
+router.get("/booking/details/:agentTxnId", trainController.getBookingDetails);
 // router.post('/getRazorpayOrder', trainController.getRazorpayOrder);
 
 module.exports = router;
