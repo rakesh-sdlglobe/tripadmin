@@ -471,3 +471,292 @@ exports.initiateRefund = async (req, res) => {
     });
   }
 };
+
+
+
+/**
+ * Get Refund Status from Easebuzz
+ * API: https://testdashboard.easebuzz.in/refund/v1/retrieve
+ * Based on official Easebuzz Refund Status API documentation
+ * 
+ * @param {Object} req - Express request object
+ * @param {Object} req.body - Request body containing refund details
+ * @param {string} req.body.easebuzz_id - Easebuzz transaction ID (required)
+ * @param {string} req.body.merchant_refund_id - Unique merchant refund ID (optional, for filtering)
+ * @param {Object} res - Express response object
+ */
+exports.getRefundStatus = async (req, res) => {
+  const data = req.body;
+  const config = {
+    key: process.env.EASEBUZZ_KEY?.trim(),
+    salt: process.env.EASEBUZZ_SALT?.trim(),
+    env: process.env.EASEBUZZ_ENV || 'test'
+  };
+
+  console.log('🔄 Refund status lookup for:', {
+    easebuzz_id: data.easebuzz_id,
+    merchant_refund_id: data.merchant_refund_id
+  });
+
+  // ✅ Validate config
+  if (!config.key || !config.salt) {
+    console.error('❌ Missing Easebuzz configuration');
+    return res.json({
+      "status": false,
+      "message": "Easebuzz credentials not configured. Please check EASEBUZZ_KEY and EASEBUZZ_SALT environment variables."
+    });
+  }
+
+  // ✅ Validate required fields
+  if (!data.easebuzz_id || !data.easebuzz_id.trim()) {
+    return res.json({
+      "status": false,
+      "message": "easebuzz_id is required"
+    });
+  }
+
+  // ✅ Validate easebuzz_id format (alphanumeric)
+  if (!/^[a-zA-Z0-9]*$/.test(data.easebuzz_id)) {
+    return res.json({
+      "status": false,
+      "message": "easebuzz_id must contain only alphanumeric characters"
+    });
+  }
+
+  // ✅ Validate merchant_refund_id format if provided (alphanumeric, underscore, hyphen)
+  if (data.merchant_refund_id && !/^[a-zA-Z0-9_-]*$/.test(data.merchant_refund_id)) {
+    return res.json({
+      "status": false,
+      "message": "merchant_refund_id must contain only alphanumeric characters, underscore, or hyphen"
+    });
+  }
+
+  try {
+    // ✅ Generate hash: key|easebuzz_id|salt
+    const hashstring = config.key + "|" + data.easebuzz_id + "|" + config.salt;
+    console.log('🔐 Refund Status Hash String:', hashstring);
+    
+    const hash_key = crypto.createHash("sha512").update(hashstring).digest("hex");
+    console.log('🔐 Generated Refund Status Hash:', hash_key);
+
+    // ✅ Build request payload
+    const payload = {
+      key: config.key,
+      easebuzz_id: data.easebuzz_id,
+      hash: hash_key
+    };
+
+    // ✅ Add optional merchant_refund_id if provided (for filtering)
+    if (data.merchant_refund_id && data.merchant_refund_id.trim()) {
+      payload.merchant_refund_id = data.merchant_refund_id.trim();
+    }
+
+    console.log('📤 Refund Status Request Data:', {
+      easebuzz_id: payload.easebuzz_id,
+      merchant_refund_id: payload.merchant_refund_id || 'not provided',
+      hash: payload.hash.substring(0, 20) + '...'
+    });
+
+    // ✅ Determine API endpoint based on environment
+    const isProduction = config.env === 'production';
+    const call_url = isProduction 
+      ? 'https://dashboard.easebuzz.in/refund/v1/retrieve'
+      : 'https://testdashboard.easebuzz.in/refund/v1/retrieve';
+
+    console.log('🌐 Calling Refund Status API:', call_url);
+
+    // ✅ Make API call (Content-Type is application/json)
+    const response = await axios.post(
+      call_url,
+      payload,
+      {
+        headers: {
+          'Content-Type': 'application/json',
+          Accept: 'application/json'
+        }
+      }
+    );
+
+    if (response && response.data) {
+      console.log('✅ Refund Status API Response:', response.data);
+      
+      // ✅ Return the response directly from Easebuzz (matching official pattern)
+      return res.json(response.data);
+    } else {
+      console.error('❌ No response received from Refund Status API');
+      return res.json({
+        "status": false,
+        "message": "No response received from Easebuzz"
+      });
+    }
+  } catch (error) {
+    console.error('❌ Error calling Refund Status API:', error.message);
+    console.error('   Error Details:', error.response?.data || error.message);
+    
+    // ✅ Return error in Easebuzz format
+    return res.json({
+      "status": false,
+      "message": "Error retrieving refund status: " + (error.response?.data?.message || error.response?.data?.error || error.message || 'Unknown error')
+    });
+  }
+};
+
+/**
+ * Get Transaction Details by Date from Easebuzz
+ * API: https://testdashboard.easebuzz.in/transaction/v1/retrieve/date
+ * Based on official Easebuzz Transaction API (by date) documentation
+ * 
+ * @param {Object} req - Express request object
+ * @param {Object} req.body - Request body containing transaction date
+ * @param {string} req.body.transaction_date - Transaction date in dd-mm-yyyy format (required)
+ * @param {string} req.body.merchant_email - Registered email of the merchant (optional, uses env var if not provided)
+ * @param {string} req.body.submerchant_id - Filter transactions by submerchant (optional)
+ * @param {Object} res - Express response object
+ */
+exports.getTransactionsByDate = async (req, res) => {
+  const data = req.body;
+  const config = {
+    key: process.env.EASEBUZZ_KEY?.trim(),
+    salt: process.env.EASEBUZZ_SALT?.trim(),
+    merchant_email: process.env.EASEBUZZ_MERCHANT_EMAIL?.trim() || data.merchant_email?.trim(),
+    env: process.env.EASEBUZZ_ENV || 'test'
+  };
+
+  console.log('📅 Transaction lookup by date for:', data.transaction_date);
+
+  // ✅ Validate environment variables
+  if (!config.key || !config.salt) {
+    console.error('❌ Missing Easebuzz configuration');
+    return res.json({
+      "status": false,
+      "message": "Easebuzz credentials not configured. Please check EASEBUZZ_KEY and EASEBUZZ_SALT environment variables."
+    });
+  }
+
+  // ✅ Validate merchant_email
+  if (!config.merchant_email || !config.merchant_email.trim()) {
+    return res.json({
+      "status": false,
+      "message": "merchant_email is required. Please provide it in the request body or set EASEBUZZ_MERCHANT_EMAIL environment variable."
+    });
+  }
+
+  // ✅ Validate transaction_date
+  if (!data.transaction_date || !data.transaction_date.trim()) {
+    return res.json({
+      "status": false,
+      "message": "transaction_date is required in dd-mm-yyyy format"
+    });
+  }
+
+  // ✅ Validate transaction_date format (dd-mm-yyyy)
+  const datePattern = /^[0-9]{2}-[0-9]{2}-[0-9]{4}$/;
+  if (!datePattern.test(data.transaction_date)) {
+    return res.json({
+      "status": false,
+      "message": "transaction_date must be in dd-mm-yyyy format (e.g., 25-12-2024)"
+    });
+  }
+
+  // ✅ Validate merchant_email format
+  const emailPattern = /^(([^<>()\[\]\\.,;:\s@"]+(\.[^<>()\[\]\\.,;:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/;
+  if (!emailPattern.test(config.merchant_email)) {
+    return res.json({
+      "status": false,
+      "message": "merchant_email must be a valid email address"
+    });
+  }
+
+  // ✅ Validate merchant_key format if provided
+  if (config.key && !/^[a-zA-Z0-9_]{1,15}$/.test(config.key)) {
+    return res.json({
+      "status": false,
+      "message": "merchant_key format is invalid"
+    });
+  }
+
+  // ✅ Validate submerchant_id format if provided
+  if (data.submerchant_id && !/^[a-zA-Z0-9_]{1,45}$/.test(data.submerchant_id)) {
+    return res.json({
+      "status": false,
+      "message": "submerchant_id must contain only alphanumeric characters and underscore (max 45 characters)"
+    });
+  }
+
+  try {
+    // ✅ Generate hash: key|merchant_email|transaction_date|salt
+    const hashstring = config.key + "|" + config.merchant_email + "|" + data.transaction_date + "|" + config.salt;
+    console.log('🔐 Transaction by Date Hash String:', hashstring);
+    
+    const hash_key = crypto.createHash("sha512").update(hashstring).digest("hex");
+    console.log('🔐 Generated Transaction by Date Hash:', hash_key);
+
+    // ✅ Build request payload
+    const payload = {
+      merchant_key: config.key,
+      merchant_email: config.merchant_email,
+      transaction_date: data.transaction_date,
+      hash: hash_key
+    };
+
+    // ✅ Add optional submerchant_id if provided
+    if (data.submerchant_id && data.submerchant_id.trim()) {
+      payload.submerchant_id = data.submerchant_id.trim();
+    }
+
+    console.log('📤 Transaction by Date Request Data:', {
+      merchant_key: payload.merchant_key,
+      merchant_email: payload.merchant_email,
+      transaction_date: payload.transaction_date,
+      submerchant_id: payload.submerchant_id || 'not provided',
+      hash: payload.hash.substring(0, 20) + '...'
+    });
+
+    // ✅ Determine API endpoint based on environment
+    const isProduction = config.env === 'production';
+    const call_url = isProduction 
+      ? 'https://dashboard.easebuzz.in/transaction/v1/retrieve/date'
+      : 'https://testdashboard.easebuzz.in/transaction/v1/retrieve/date';
+
+    console.log('🌐 Calling Transaction by Date API:', call_url);
+
+    // ✅ Make API call (Content-Type is application/x-www-form-urlencoded)
+    const formData = new URLSearchParams(payload);
+    
+    const response = await axios.post(
+      call_url,
+      formData,
+      {
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+          Accept: 'application/json'
+        }
+      }
+    );
+
+    if (response && response.data) {
+      console.log('✅ Transaction by Date API Response:', {
+        status: response.data.status,
+        transactionCount: response.data.transactions?.length || 0
+      });
+      
+      // ✅ Return the response directly from Easebuzz (matching official pattern)
+      return res.json(response.data);
+    } else {
+      console.error('❌ No response received from Transaction by Date API');
+      return res.json({
+        "status": false,
+        "message": "No response received from Easebuzz"
+      });
+    }
+  } catch (error) {
+    console.error('❌ Error calling Transaction by Date API:', error.message);
+    console.error('   Error Details:', error.response?.data || error.message);
+    
+    // ✅ Return error in Easebuzz format
+    return res.json({
+      "status": false,
+      "message": "Error retrieving transactions by date: " + (error.response?.data?.message || error.response?.data?.error || error.message || 'Unknown error')
+    });
+  }
+};
