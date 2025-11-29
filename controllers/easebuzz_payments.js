@@ -173,14 +173,81 @@ exports.easebuzzPaymentCallback = async (req, res) => {
     // Get frontend URL from environment or default to localhost
     const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
     
+    // Product type mapping - maps product types to their success/failure page routes
+    const productRoutes = {
+      'bus': {
+        success: '/bus-payment-success',
+        failure: '/bus-payment-failure'
+      },
+      'insurance': {
+        success: '/insurance-payment-success',
+        failure: '/insurance-payment-failure'
+      },
+      'hotel': {
+        success: '/hotel-payment-success',
+        failure: '/hotel-payment-failure'
+      },
+      'flight': {
+        success: '/flight-payment-success',
+        failure: '/flight-payment-failure'
+      },
+      'train': {
+        success: '/train-payment-success',
+        failure: '/train-payment-failure'
+      },
+      'cab': {
+        success: '/cab-payment-success',
+        failure: '/cab-payment-failure'
+      },
+      'cruise': {
+        success: '/cruise-payment-success',
+        failure: '/cruise-payment-failure'
+      }
+    };
+    
+    // Detect product type from query params or transaction ID prefix
+    let paymentType = req.query.type || 'bus'; // Default to bus for backward compatibility
+    
+    // If type not in query, try to detect from transaction ID prefix
+    if (!req.query.type && txnid) {
+      const txnidUpper = txnid.toUpperCase();
+      if (txnidUpper.startsWith('INS_')) {
+        paymentType = 'insurance';
+      } else if (txnidUpper.startsWith('BUS_')) {
+        paymentType = 'bus';
+      } else if (txnidUpper.startsWith('HTL_') || txnidUpper.startsWith('HOTEL_')) {
+        paymentType = 'hotel';
+      } else if (txnidUpper.startsWith('FLT_') || txnidUpper.startsWith('FLIGHT_')) {
+        paymentType = 'flight';
+      } else if (txnidUpper.startsWith('TRN_') || txnidUpper.startsWith('TRAIN_')) {
+        paymentType = 'train';
+      } else if (txnidUpper.startsWith('CAB_')) {
+        paymentType = 'cab';
+      } else if (txnidUpper.startsWith('CRS_') || txnidUpper.startsWith('CRUISE_')) {
+        paymentType = 'cruise';
+      }
+    }
+    
+    // Get routes for the detected product type, fallback to bus if not found
+    const routes = productRoutes[paymentType] || productRoutes['bus'];
+    
+    console.log("🔍 Payment Type Detection:", {
+      typeFromQuery: req.query.type,
+      txnidPrefix: txnid ? txnid.substring(0, 4) : 'N/A',
+      detectedType: paymentType,
+      routes: routes
+    });
+    
     // Redirect to React route with transaction ID (similar to Razorpay handler redirect)
     if (isSuccess) {
-      console.log("✅ Payment successful, redirecting to:", `${frontendUrl}/bus-payment-success?txnid=${txnid}`);
-      return res.redirect(`${frontendUrl}/bus-payment-success?txnid=${txnid}`);
+      const successUrl = `${frontendUrl}${routes.success}?txnid=${txnid}`;
+      console.log(`✅ ${paymentType.charAt(0).toUpperCase() + paymentType.slice(1)} payment successful, redirecting to:`, successUrl);
+      return res.redirect(successUrl);
     } else {
-      console.log("❌ Payment failed or status unclear, redirecting to:", `${frontendUrl}/bus-payment-failure?txnid=${txnid}`);
+      const failureUrl = `${frontendUrl}${routes.failure}?txnid=${txnid}`;
+      console.log(`❌ ${paymentType.charAt(0).toUpperCase() + paymentType.slice(1)} payment failed or status unclear, redirecting to:`, failureUrl);
       console.log("   Status values:", { statusFromQuery, statusFromBody, finalStatus: status });
-      return res.redirect(`${frontendUrl}/bus-payment-failure?txnid=${txnid}`);
+      return res.redirect(failureUrl);
     }
   } catch (error) {
     console.error("❌ Easebuzz Callback Error:", error.message);
@@ -195,8 +262,34 @@ exports.easebuzzPaymentCallback = async (req, res) => {
     const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
     const txnid = req.body?.txnid || req.query?.txnid || '';
     
+    // Product type mapping (same as above)
+    const productRoutes = {
+      'bus': { failure: '/bus-payment-failure' },
+      'insurance': { failure: '/insurance-payment-failure' },
+      'hotel': { failure: '/hotel-payment-failure' },
+      'flight': { failure: '/flight-payment-failure' },
+      'train': { failure: '/train-payment-failure' },
+      'cab': { failure: '/cab-payment-failure' },
+      'cruise': { failure: '/cruise-payment-failure' }
+    };
+    
+    // Detect product type
+    let paymentType = req.query.type || 'bus';
+    if (!req.query.type && txnid) {
+      const txnidUpper = txnid.toUpperCase();
+      if (txnidUpper.startsWith('INS_')) paymentType = 'insurance';
+      else if (txnidUpper.startsWith('BUS_')) paymentType = 'bus';
+      else if (txnidUpper.startsWith('HTL_') || txnidUpper.startsWith('HOTEL_')) paymentType = 'hotel';
+      else if (txnidUpper.startsWith('FLT_') || txnidUpper.startsWith('FLIGHT_')) paymentType = 'flight';
+      else if (txnidUpper.startsWith('TRN_') || txnidUpper.startsWith('TRAIN_')) paymentType = 'train';
+      else if (txnidUpper.startsWith('CAB_')) paymentType = 'cab';
+      else if (txnidUpper.startsWith('CRS_') || txnidUpper.startsWith('CRUISE_')) paymentType = 'cruise';
+    }
+    
+    const routes = productRoutes[paymentType] || productRoutes['bus'];
+    
     try {
-      return res.redirect(`${frontendUrl}/bus-payment-failure?txnid=${txnid}`);
+      return res.redirect(`${frontendUrl}${routes.failure}?txnid=${txnid}`);
     } catch (redirectError) {
       console.error("❌ Failed to redirect:", redirectError.message);
       return res.status(500).json({ 

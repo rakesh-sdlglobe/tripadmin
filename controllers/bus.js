@@ -923,8 +923,8 @@ exports.createBusBooking = async (req, res) => {
             safeValue(payment_status, 'Pending'), // 26 - payment_status
             safeValue(payment_status === 'Completed' ? 'Easebuzz' : null, null), // 27 - payment_method
             safeValue(payment_transaction_id, null), // 28 - transaction_id
-            null, // 29 - razorpay_order_id
-            null, // 30 - razorpay_payment_id
+            null, // 29 - easebuzz_order_id
+            null, // 30 - easebuzz_payment_id
             safeValue(leadPassenger?.email, ''), // 31 - contact_email
             safeValue(leadPassenger?.phone, ''), // 32 - contact_mobile
             safeValue(leadPassenger?.address, null), // 33 - address
