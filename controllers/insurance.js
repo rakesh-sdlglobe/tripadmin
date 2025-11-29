@@ -304,7 +304,7 @@ exports.GetInsuranceBook = async (req, res) => {
                                 total_premium, base_premium, booking_status, booking_reference,
                                 policy_number, insurance_company, insurance_name, plan_name, 
                                 coverage_amount, payment_status, payment_method, transaction_id, 
-                                razorpay_order_id, razorpay_payment_id, contact_email, contact_mobile, 
+                                easebuzz_order_id, easebuzz_payment_id, contact_email, contact_mobile, 
                                 address, BeneficiaryName, RelationShipToInsured, RelationToBeneficiary,
                                 DOB, PassportNo, PassportCountry, city, state, pincode
                             ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
@@ -324,8 +324,52 @@ exports.GetInsuranceBook = async (req, res) => {
                             itinerary.PlanCategory || 2, // plan_category
                             itinerary.PlanType || 1, // plan_type
                             itinerary.PlanCoverage || 1, // plan_coverage
-                            itinerary.PolicyStartDate ? new Date(itinerary.PolicyStartDate).toISOString().slice(0, 19).replace('T', ' ') : null, // travel_start_date
-                            itinerary.PolicyEndDate ? new Date(itinerary.PolicyEndDate).toISOString().slice(0, 19).replace('T', ' ') : null, // travel_end_date
+                            itinerary.PolicyStartDate ? (() => {
+                                try {
+                                    const dateStr = itinerary.PolicyStartDate;
+                                    // Check if already in YYYY-MM-DD format
+                                    if (typeof dateStr === 'string' && /^\d{4}-\d{2}-\d{2}/.test(dateStr)) {
+                                        return dateStr.split('T')[0].split(' ')[0];
+                                    }
+                                    // Check if in YYYY/MM/DD format (from API)
+                                    const slashMatch = String(dateStr).match(/^(\d{4})\/(\d{2})\/(\d{2})/);
+                                    if (slashMatch) {
+                                        return `${slashMatch[1]}-${slashMatch[2]}-${slashMatch[3]}`;
+                                    }
+                                    // Parse as date and use UTC to avoid timezone shifts
+                                    const date = new Date(dateStr);
+                                    if (isNaN(date.getTime())) return null;
+                                    const year = date.getUTCFullYear();
+                                    const month = String(date.getUTCMonth() + 1).padStart(2, '0');
+                                    const day = String(date.getUTCDate()).padStart(2, '0');
+                                    return `${year}-${month}-${day}`;
+                                } catch {
+                                    return null;
+                                }
+                            })() : null, // travel_start_date
+                            itinerary.PolicyEndDate ? (() => {
+                                try {
+                                    const dateStr = itinerary.PolicyEndDate;
+                                    // Check if already in YYYY-MM-DD format
+                                    if (typeof dateStr === 'string' && /^\d{4}-\d{2}-\d{2}/.test(dateStr)) {
+                                        return dateStr.split('T')[0].split(' ')[0];
+                                    }
+                                    // Check if in YYYY/MM/DD format (from API)
+                                    const slashMatch = String(dateStr).match(/^(\d{4})\/(\d{2})\/(\d{2})/);
+                                    if (slashMatch) {
+                                        return `${slashMatch[1]}-${slashMatch[2]}-${slashMatch[3]}`;
+                                    }
+                                    // Parse as date and use UTC to avoid timezone shifts
+                                    const date = new Date(dateStr);
+                                    if (isNaN(date.getTime())) return null;
+                                    const year = date.getUTCFullYear();
+                                    const month = String(date.getUTCMonth() + 1).padStart(2, '0');
+                                    const day = String(date.getUTCDate()).padStart(2, '0');
+                                    return `${year}-${month}-${day}`;
+                                } catch {
+                                    return null;
+                                }
+                            })() : null, // travel_end_date
                             leadPassenger.MajorDestination || 'India', // destination
                             numberOfPassengers, // no_of_pax
                             itinerary.Price?.OfferedPriceRoundedOff || itinerary.Price?.PublishedPriceRoundedOff || 0, // total_premium
@@ -340,8 +384,8 @@ exports.GetInsuranceBook = async (req, res) => {
                             'Pending', // payment_status
                             null, // payment_method
                             null, // transaction_id
-                            null, // razorpay_order_id
-                            null, // razorpay_payment_id
+                            null, // easebuzz_order_id
+                            null, // easebuzz_payment_id
                             leadPassenger.EmailId || '', // contact_email
                             leadPassenger.PhoneNumber || '', // contact_mobile
                             leadPassenger.AddressLine1 || '', // address
@@ -738,7 +782,7 @@ exports.createInsuranceBooking = async (req, res) => {
                 total_premium, base_premium, booking_status, booking_reference,
                 policy_number, insurance_company, insurance_name, plan_name, 
                 coverage_amount, payment_status, payment_method, transaction_id, 
-                razorpay_order_id, razorpay_payment_id, contact_email, contact_mobile, 
+                easebuzz_order_id, easebuzz_payment_id, contact_email, contact_mobile, 
                 address, BeneficiaryName, RelationShipToInsured, RelationToBeneficiary,
                 DOB, PassportNo, PassportCountry, city, state, pincode
             ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
@@ -746,14 +790,51 @@ exports.createInsuranceBooking = async (req, res) => {
 
         const bookingReference = `INS${Date.now()}`;
         
+        // Helper function to format date properly (avoid timezone issues)
+        const formatDateForDB = (dateValue) => {
+            if (!dateValue) return null;
+            
+            // If it's already a string in YYYY-MM-DD format, return as is
+            if (typeof dateValue === 'string') {
+                // Check if it's already in YYYY-MM-DD format
+                const dateOnlyMatch = dateValue.match(/^(\d{4})-(\d{2})-(\d{2})/);
+                if (dateOnlyMatch) {
+                    return dateOnlyMatch[0]; // Return YYYY-MM-DD
+                }
+                
+                // Check if it's in YYYY/MM/DD format (from API)
+                const slashDateMatch = dateValue.match(/^(\d{4})\/(\d{2})\/(\d{2})/);
+                if (slashDateMatch) {
+                    return `${slashDateMatch[1]}-${slashDateMatch[2]}-${slashDateMatch[3]}`;
+                }
+            }
+            
+            // If it's a Date object or ISO string, parse it carefully
+            try {
+                const date = new Date(dateValue);
+                if (isNaN(date.getTime())) return null;
+                
+                // Use UTC methods to prevent timezone conversion issues
+                // This ensures the date stays as entered regardless of server timezone
+                const year = date.getUTCFullYear();
+                const month = String(date.getUTCMonth() + 1).padStart(2, '0');
+                const day = String(date.getUTCDate()).padStart(2, '0');
+                
+                return `${year}-${month}-${day}`;
+            } catch (error) {
+                console.error('Error formatting date:', error);
+                return null;
+            }
+        };
+        
         const insuranceValues = [
             null, // booking_id (will be generated by API)
             finalUserId, // user_id
             safeValue(parsedInsuranceData?.plan_category, 1), // plan_category
             safeValue(parsedInsuranceData?.plan_type, 1), // plan_type
             safeValue(parsedInsuranceData?.plan_coverage, 1), // plan_coverage
-            safeValue(parsedInsuranceData?.travel_start_date), // travel_start_date
-            safeValue(parsedInsuranceData?.travel_end_date), // travel_end_date
+            formatDateForDB(parsedInsuranceData?.travel_start_date), // travel_start_date
+            formatDateForDB(parsedInsuranceData?.travel_end_date), // travel_end_date
             destination, // destination
             numberOfPassengers, // no_of_pax
             safeValue(parsedFareDetails?.total_premium, 0), // total_premium
@@ -768,8 +849,8 @@ exports.createInsuranceBooking = async (req, res) => {
             'Pending', // payment_status
             null, // payment_method
             null, // transaction_id
-            null, // razorpay_order_id
-            null, // razorpay_payment_id
+            null, // easebuzz_order_id
+            null, // easebuzz_payment_id
             safeValue(parsedContactDetails?.email, ''), // contact_email
             safeValue(parsedContactDetails?.mobile, ''), // contact_mobile
             safeValue(parsedAddressDetails?.address), // address
@@ -859,7 +940,7 @@ exports.getInsuranceBookingDetails = async (req, res) => {
 exports.updateInsuranceBookingStatus = async (req, res) => {
     try {
         const { booking_id } = req.params;
-        const { booking_status, payment_status, policy_number, transaction_id, payment_method, razorpay_payment_id, total_premium, base_premium } = req.body;
+        const { booking_status, payment_status, policy_number, transaction_id, payment_method, easebuzz_payment_id, total_premium, base_premium } = req.body;
         
         console.log("🔄 Updating insurance booking status:", {
             booking_id,
@@ -868,7 +949,7 @@ exports.updateInsuranceBookingStatus = async (req, res) => {
             policy_number,
             transaction_id,
             payment_method,
-            razorpay_payment_id,
+            easebuzz_payment_id,
             total_premium,
             base_premium
         });
@@ -880,7 +961,7 @@ exports.updateInsuranceBookingStatus = async (req, res) => {
                 policy_number = ?, 
                 transaction_id = ?,
                 payment_method = ?,
-                razorpay_payment_id = ?,
+                easebuzz_payment_id = ?,
                 total_premium = ?,
                 base_premium = ?,
                 updated_at = CURRENT_TIMESTAMP
@@ -893,7 +974,7 @@ exports.updateInsuranceBookingStatus = async (req, res) => {
             policy_number, 
             transaction_id,
             payment_method || null,
-            razorpay_payment_id || null,
+            easebuzz_payment_id || null,
             total_premium || null,
             base_premium || null,
             booking_id
